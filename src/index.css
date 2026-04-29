@@ -1,0 +1,14 @@
+/* Стили для index */
+
+.index {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* Адаптивный дизайн */
+@media (max-width: 768px) {
+  .index {
+    padding: 10px;
+  }
+}

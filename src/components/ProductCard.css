@@ -1,0 +1,14 @@
+/* Стили для ProductCard */
+
+.productcard {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* Адаптивный дизайн */
+@media (max-width: 768px) {
+  .productcard {
+    padding: 10px;
+  }
+}
