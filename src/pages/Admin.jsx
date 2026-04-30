@@ -1,28 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import { 
   getProducts, createProduct, updateProduct, deleteProduct, updateProductStock,
-  getOrders, updateOrderStatus, getCategories 
+  getOrders, updateOrderStatus, getCategories, createCategory, getCategoryById
 } from '../services/api';
 import './Admin.css';
 
 const Admin = () => {
-  const [activeTab, setActiveTab] = useState('products');
+  const [activeTab, setActiveTab] = useState('products');  // ← здесь был пропущен знак =
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [showCategoryForm, setShowCategoryForm] = useState(false);
   const itemsPerPage = 10;
   
   const [formData, setFormData] = useState({
     name: '',
+    description: '',
     price: '',
     stock: '',
-    socket_type: 'E27',
+    socket_type: '',
     power_watt: '',
     color_temp_k: '',
+    lumen: '',
+    lifespan_hours: '',
     category_id: 1,
+    image_url: ''
+  });
+
+  const [categoryFormData, setCategoryFormData] = useState({
+    name: '',
     description: ''
   });
 
@@ -31,6 +40,14 @@ const Admin = () => {
     loadData();
   }, [activeTab]);
 
+  useEffect(() => {
+    if (activeTab === 'products') {
+      loadProducts();
+    } else if (activeTab === 'orders') {
+      loadOrders();
+    }
+  }, [activeTab, currentPage]);
+
   const loadCategories = async () => {
     try {
       const data = await getCategories();
@@ -38,414 +55,563 @@ const Admin = () => {
       if (data.length > 0 && !formData.category_id) {
         setFormData(prev => ({ ...prev, category_id: data[0].id }));
       }
-    } catch (err) {
-      console.error('Ошибка загрузки категорий:', err);
+    } catch (error) {
+      console.error('Ошибка загрузки категорий:', error);
     }
   };
 
-  const loadData = async () => {
+  const loadProducts = async () => {
     setLoading(true);
-    if (activeTab === 'products') {
+    try {
       const data = await getProducts();
       setProducts(data);
-    } else {
-      const data = await getOrders();
-      setOrders(data);
+    } catch (error) {
+      console.error('Ошибка загрузки товаров:', error);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  const handleProductSubmit = async (e) => {
+  const loadOrders = async () => {
+    setLoading(true);
+    try {
+      const data = await getOrders();
+      setOrders(data.data || []);
+    } catch (error) {
+      console.error('Ошибка загрузки заказов:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadData = () => {
+    if (activeTab === 'products') {
+      loadProducts();
+    } else if (activeTab === 'orders') {
+      loadOrders();
+    }
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleCategoryInputChange = (e) => {
+    const { name, value } = e.target;
+    setCategoryFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleCreateCategory = async (e) => {
+    e.preventDefault();
+    if (!categoryFormData.name) {
+      alert('Введите название категории');
+      return;
+    }
+
+    try {
+      await createCategory({
+        name: categoryFormData.name,
+        description: categoryFormData.description || null
+      });
+      alert('Категория успешно добавлена');
+      setCategoryFormData({ name: '', description: '' });
+      setShowCategoryForm(false);
+      await loadCategories();
+    } catch (error) {
+      console.error('Ошибка создания категории:', error);
+      alert('Ошибка при создании категории');
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (!formData.name || !formData.price || !formData.stock) {
-      alert('Пожалуйста, заполните название, цену и остаток');
+      alert('Пожалуйста, заполните обязательные поля (название, цена, остаток)');
       return;
     }
-    
+
+    const productData = {
+      name: formData.name,
+      description: formData.description || null,
+      price: parseFloat(formData.price),
+      stock: parseInt(formData.stock),
+      socket_type: formData.socket_type || null,
+      power_watt: formData.power_watt ? parseInt(formData.power_watt) : null,
+      color_temp_k: formData.color_temp_k ? parseInt(formData.color_temp_k) : null,
+      lumen: formData.lumen ? parseInt(formData.lumen) : null,
+      lifespan_hours: formData.lifespan_hours ? parseInt(formData.lifespan_hours) : null,
+      category_id: parseInt(formData.category_id),
+      image_url: formData.image_url || null
+    };
+
     try {
       if (editingProduct) {
-        await updateProduct(editingProduct.id, formData);
-        alert('✅ Товар обновлен!');
+        await updateProduct(editingProduct.id, productData);
+        alert('Товар успешно обновлен');
       } else {
-        await createProduct(formData);
-        alert('✅ Товар создан!');
+        await createProduct(productData);
+        alert('Товар успешно добавлен');
       }
-      setEditingProduct(null);
-      setFormData({
-        name: '',
-        price: '',
-        stock: '',
-        socket_type: 'E27',
-        power_watt: '',
-        color_temp_k: '',
-        category_id: categories[0]?.id || 1,
-        description: ''
-      });
-      loadData();
-    } catch (err) {
-      alert(`❌ Ошибка: ${err.message}`);
-      console.error(err);
+      
+      resetForm();
+      loadProducts();
+    } catch (error) {
+      console.error('Ошибка сохранения товара:', error);
+      alert('Ошибка при сохранении товара');
     }
-  };
-
-  const handleDeleteProduct = async (id) => {
-    if (confirm('Удалить товар?')) {
-      try {
-        await deleteProduct(id);
-        alert('✅ Товар удален');
-        loadData();
-      } catch (err) {
-        alert('❌ Ошибка удаления');
-      }
-    }
-  };
-
-  const handleStockUpdate = async (id, newStock) => {
-    try {
-      await updateProductStock(id, newStock);
-      loadData();
-    } catch (err) {
-      alert('❌ Ошибка обновления остатка');
-    }
-  };
-
-  const handleStatusUpdate = async (orderId, newStatus) => {
-    try {
-      await updateOrderStatus(orderId, newStatus);
-      alert('✅ Статус обновлен');
-      loadData();
-    } catch (err) {
-      alert('❌ Ошибка обновления статуса');
-    }
-  };
-
-  const getStatusName = (status) => {
-    const names = {
-      'new': 'Новый',
-      'confirmed': 'Подтвержден',
-      'paid': 'Оплачен',
-      'shipped': 'Отправлен',
-      'delivered': 'Доставлен',
-      'cancelled': 'Отменен'
-    };
-    return names[status] || status;
   };
 
   const handleEditProduct = (product) => {
     setEditingProduct(product);
     setFormData({
       name: product.name || '',
+      description: product.description || '',
       price: product.price || '',
       stock: product.stock || '',
-      socket_type: product.socket_type || 'E27',
+      socket_type: product.socket_type || '',
       power_watt: product.power_watt || '',
       color_temp_k: product.color_temp_k || '',
-      category_id: product.category_id || 1,
-      description: product.description || ''
+      lumen: product.lumen || '',
+      lifespan_hours: product.lifespan_hours || '',
+      category_id: product.category_id || categories[0]?.id || 1,
+      image_url: product.image_url || ''
     });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const cancelEdit = () => {
+  const handleDeleteProduct = async (id) => {
+    if (window.confirm('Вы уверены, что хотите удалить этот товар?')) {
+      try {
+        await deleteProduct(id);
+        alert('Товар удален');
+        loadProducts();
+      } catch (error) {
+        console.error('Ошибка удаления товара:', error);
+        alert('Ошибка при удалении товара');
+      }
+    }
+  };
+
+  const handleUpdateStock = async (id, newStock) => {
+    try {
+      await updateProductStock(id, { stock: parseInt(newStock) });
+      alert('Остаток обновлен');
+      loadProducts();
+    } catch (error) {
+      console.error('Ошибка обновления остатка:', error);
+      alert('Ошибка при обновлении остатка');
+    }
+  };
+
+  const handleUpdateOrderStatus = async (orderId, newStatus) => {
+    try {
+      await updateOrderStatus(orderId, { status: newStatus });
+      alert('Статус заказа обновлен');
+      loadOrders();
+    } catch (error) {
+      console.error('Ошибка обновления статуса:', error);
+      alert('Ошибка при обновлении статуса');
+    }
+  };
+
+  const resetForm = () => {
     setEditingProduct(null);
     setFormData({
       name: '',
+      description: '',
       price: '',
       stock: '',
-      socket_type: 'E27',
+      socket_type: '',
       power_watt: '',
       color_temp_k: '',
+      lumen: '',
+      lifespan_hours: '',
       category_id: categories[0]?.id || 1,
-      description: ''
+      image_url: ''
     });
   };
 
-  // Пагинация для товаров
-  const totalProductPages = Math.ceil(products.length / itemsPerPage);
+  const getStatusBadgeClass = (status) => {
+    switch (status) {
+      case 'new': return 'status-new';
+      case 'confirmed': return 'status-confirmed';
+      case 'paid': return 'status-paid';
+      case 'shipped': return 'status-shipped';
+      case 'delivered': return 'status-delivered';
+      case 'cancelled': return 'status-cancelled';
+      default: return '';
+    }
+  };
+
+  const getStatusText = (status) => {
+    switch (status) {
+      case 'new': return 'Новый';
+      case 'confirmed': return 'Подтвержден';
+      case 'paid': return 'Оплачен';
+      case 'shipped': return 'Отправлен';
+      case 'delivered': return 'Доставлен';
+      case 'cancelled': return 'Отменен';
+      default: return status;
+    }
+  };
+
   const paginatedProducts = products.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
 
-  if (loading) return <div className="loading">Загрузка...</div>;
+  const totalPages = Math.ceil(products.length / itemsPerPage);
 
   return (
     <div className="admin-page">
       <div className="admin-header">
-        <h1>Панель управления</h1>
-        <button className="logout-btn" onClick={() => alert('Выход из админки')}>
-          Выход
+        <h1>👨‍💼 Панель администратора</h1>
+        <button className="logout-btn" onClick={() => {/* Логика выхода */}}>
+          Выйти
         </button>
       </div>
-      
+
       <div className="admin-tabs">
         <button 
-          className={`tab-btn ${activeTab === 'products' ? 'active' : ''}`} 
-          onClick={() => setActiveTab('products')}
+          className={`tab-btn ${activeTab === 'products' ? 'active' : ''}`}
+          onClick={() => { setActiveTab('products'); setCurrentPage(1); }}
         >
           📦 Товары
         </button>
         <button 
-          className={`tab-btn ${activeTab === 'orders' ? 'active' : ''}`} 
-          onClick={() => setActiveTab('orders')}
+          className={`tab-btn ${activeTab === 'orders' ? 'active' : ''}`}
+          onClick={() => { setActiveTab('orders'); setCurrentPage(1); }}
         >
           📋 Заказы
-        </button>
-        <button 
-          className="add-product-btn"
-          onClick={() => document.querySelector('.product-form')?.scrollIntoView({ behavior: 'smooth' })}
-        >
-          + Добавить товар
         </button>
       </div>
 
       {activeTab === 'products' && (
-        <>
-          <form onSubmit={handleProductSubmit} className="product-form">
-            <h3>{editingProduct ? '✏️ Редактировать товар' : '➕ Добавить товар'}</h3>
-            
-            <div className="form-row">
-              <div className="form-field">
-                <label>Название товара *</label>
-                <input 
-                  type="text" 
-                  placeholder="LED лампа E27 7W" 
-                  value={formData.name} 
-                  onChange={e => setFormData({...formData, name: e.target.value})} 
-                  required 
-                />
-              </div>
-              
-              <div className="form-field">
-                <label>Цена *</label>
-                <input 
-                  type="number" 
-                  placeholder="299" 
-                  value={formData.price} 
-                  onChange={e => setFormData({...formData, price: e.target.value})} 
-                  required 
-                />
-              </div>
-              
-              <div className="form-field">
-                <label>Остаток *</label>
-                <input 
-                  type="number" 
-                  placeholder="100" 
-                  value={formData.stock} 
-                  onChange={e => setFormData({...formData, stock: e.target.value})} 
-                  required 
-                />
-              </div>
-            </div>
-
-            <div className="form-row">
-              <div className="form-field">
-                <label>Тип цоколя</label>
-                <select value={formData.socket_type} onChange={e => setFormData({...formData, socket_type: e.target.value})}>
-                  <option value="E27">E27</option>
-                  <option value="E14">E14</option>
-                  <option value="GU10">GU10</option>
-                  <option value="GX53">GX53</option>
-                  <option value="G9">G9</option>
-                </select>
-              </div>
-              
-              <div className="form-field">
-                <label>Мощность (Вт)</label>
-                <input 
-                  type="number" 
-                  placeholder="7" 
-                  value={formData.power_watt} 
-                  onChange={e => setFormData({...formData, power_watt: e.target.value})} 
-                />
-              </div>
-              
-              <div className="form-field">
-                <label>Температура (K)</label>
-                <input 
-                  type="number" 
-                  placeholder="2700" 
-                  value={formData.color_temp_k} 
-                  onChange={e => setFormData({...formData, color_temp_k: e.target.value})} 
-                />
-              </div>
-              
-              <div className="form-field">
-                <label>Категория</label>
-                <select value={formData.category_id} onChange={e => setFormData({...formData, category_id: parseInt(e.target.value)})}>
-                  {categories.map(cat => (
-                    <option key={cat.id} value={cat.id}>{cat.name}</option>
-                  ))}
-                  {categories.length === 0 && <option value="1">LED лампочки</option>}
-                </select>
-              </div>
-            </div>
-
-            <div className="form-row">
-              <div className="form-field full-width">
-                <label>Описание</label>
-                <textarea 
-                  placeholder="Описание товара..." 
-                  value={formData.description} 
-                  onChange={e => setFormData({...formData, description: e.target.value})}
-                  rows="3"
-                />
-              </div>
+        <div className="products-tab">
+          {/* Форма добавления категории */}
+          <div className="category-section">
+            <div className="category-header">
+              <h3>📁 Управление категориями</h3>
+              <button 
+                className="add-category-btn"
+                onClick={() => setShowCategoryForm(!showCategoryForm)}
+              >
+                {showCategoryForm ? '✖ Отмена' : '+ Добавить категорию'}
+              </button>
             </div>
             
-            <div className="form-buttons">
-              <button type="submit">{editingProduct ? 'Обновить' : 'Создать'}</button>
-              {editingProduct && (
-                <button type="button" className="cancel-btn" onClick={cancelEdit}>
-                  Отмена
+            {showCategoryForm && (
+              <form className="category-form" onSubmit={handleCreateCategory}>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Название категории *</label>
+                    <input
+                      type="text"
+                      name="name"
+                      value={categoryFormData.name}
+                      onChange={handleCategoryInputChange}
+                      placeholder="Например: LED лампочки"
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Описание</label>
+                    <input
+                      type="text"
+                      name="description"
+                      value={categoryFormData.description}
+                      onChange={handleCategoryInputChange}
+                      placeholder="Краткое описание категории"
+                    />
+                  </div>
+                  <div className="form-actions">
+                    <button type="submit" className="submit-category-btn">
+                      ✅ Создать категорию
+                    </button>
+                  </div>
+                </div>
+              </form>
+            )}
+            
+            {/* Список существующих категорий */}
+            <div className="categories-list">
+              {categories.map(cat => (
+                <span key={cat.id} className="category-tag">
+                  {cat.name}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Форма добавления/редактирования товара */}
+          <div className="product-form-section">
+            <h3>{editingProduct ? '✏️ Редактирование товара' : '➕ Добавление нового товара'}</h3>
+            <form className="product-form" onSubmit={handleSubmit}>
+              <div className="form-grid">
+                <div className="form-group full-width">
+                  <label>Название товара *</label>
+                  <input
+                    type="text"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    placeholder="Например: LED E27 9W 4000K"
+                    required
+                  />
+                </div>
+
+                <div className="form-group full-width">
+                  <label>Описание</label>
+                  <textarea
+                    name="description"
+                    value={formData.description}
+                    onChange={handleInputChange}
+                    placeholder="Описание товара, характеристики, особенности..."
+                    rows="3"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Цена (₽) *</label>
+                  <input
+                    type="number"
+                    name="price"
+                    value={formData.price}
+                    onChange={handleInputChange}
+                    placeholder="299"
+                    step="0.01"
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Остаток на складе *</label>
+                  <input
+                    type="number"
+                    name="stock"
+                    value={formData.stock}
+                    onChange={handleInputChange}
+                    placeholder="85"
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Тип цоколя</label>
+                  <input
+                    type="text"
+                    name="socket_type"
+                    value={formData.socket_type}
+                    onChange={handleInputChange}
+                    placeholder="E27, E14, GU10, G9, G4 или другой тип"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Категория</label>
+                  <select name="category_id" value={formData.category_id} onChange={handleInputChange}>
+                    {categories.map(cat => (
+                      <option key={cat.id} value={cat.id}>{cat.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label>Мощность (Вт)</label>
+                  <input
+                    type="number"
+                    name="power_watt"
+                    value={formData.power_watt}
+                    onChange={handleInputChange}
+                    placeholder="9"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Цветовая температура (K)</label>
+                  <input
+                    type="number"
+                    name="color_temp_k"
+                    value={formData.color_temp_k}
+                    onChange={handleInputChange}
+                    placeholder="4000"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Световой поток (люмен)</label>
+                  <input
+                    type="number"
+                    name="lumen"
+                    value={formData.lumen}
+                    onChange={handleInputChange}
+                    placeholder="1055"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Срок службы (часов)</label>
+                  <input
+                    type="number"
+                    name="lifespan_hours"
+                    value={formData.lifespan_hours}
+                    onChange={handleInputChange}
+                    placeholder="25000"
+                  />
+                </div>
+
+                <div className="form-group full-width">
+                  <label>URL изображения</label>
+                  <input
+                    type="text"
+                    name="image_url"
+                    value={formData.image_url}
+                    onChange={handleInputChange}
+                    placeholder="https://example.com/image.jpg"
+                  />
+                </div>
+              </div>
+
+              <div className="form-buttons">
+                <button type="submit" className="submit-btn">
+                  {editingProduct ? '💾 Сохранить изменения' : '➕ Добавить товар'}
                 </button>
-              )}
-            </div>
-          </form>
+                {editingProduct && (
+                  <button type="button" className="cancel-btn" onClick={resetForm}>
+                    Отмена
+                  </button>
+                )}
+              </div>
+            </form>
+          </div>
 
-          <div className="table-wrapper">
-            <table className="admin-table">
+          {/* Список товаров */}
+          <div className="products-list-section">
+            <h3>📋 Список товаров</h3>
+            {loading ? (
+              <div className="loading">Загрузка...</div>
+            ) : (
+              <>
+                <table className="products-table">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Название</th>
+                      <th>Цена</th>
+                      <th>Остаток</th>
+                      <th>Категория</th>
+                      <th>Цоколь</th>
+                      <th>Мощность</th>
+                      <th>Действия</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginatedProducts.map(product => (
+                      <tr key={product.id}>
+                        <td>{product.id}</td>
+                        <td>{product.name}</td>
+                        <td>{product.price} ₽</td>
+                        <td>
+                          <input
+                            type="number"
+                            value={product.stock}
+                            onChange={(e) => handleUpdateStock(product.id, e.target.value)}
+                            className="stock-input"
+                            style={{ width: '80px' }}
+                          />
+                        </td>
+                        <td>{product.category_name || '-'}</td>
+                        <td>{product.socket_type || '-'}</td>
+                        <td>{product.power_watt ? `${product.power_watt} Вт` : '-'}</td>
+                        <td>
+                          <button className="edit-btn" onClick={() => handleEditProduct(product)}>
+                            ✏️
+                          </button>
+                          <button className="delete-btn" onClick={() => handleDeleteProduct(product.id)}>
+                            🗑️
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                {totalPages > 1 && (
+                  <div className="pagination">
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1}
+                    >
+                      ← Назад
+                    </button>
+                    <span>Страница {currentPage} из {totalPages}</span>
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                      disabled={currentPage === totalPages}
+                    >
+                      Вперед →
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'orders' && (
+        <div className="orders-tab">
+          <h3>📋 Заказы</h3>
+          {loading ? (
+            <div className="loading">Загрузка...</div>
+          ) : orders.length === 0 ? (
+            <div className="empty-state">Заказов пока нет</div>
+          ) : (
+            <table className="orders-table">
               <thead>
                 <tr>
-                  <th>ID</th>
-                  <th>Название</th>
-                  <th>Мощность</th>
-                  <th>Цоколь</th>
-                  <th>Цена</th>
-                  <th>Остаток</th>
+                  <th>№ заказа</th>
+                  <th>Клиент</th>
+                  <th>Телефон</th>
+                  <th>Сумма</th>
+                  <th>Статус</th>
+                  <th>Дата</th>
                   <th>Действия</th>
                 </tr>
               </thead>
               <tbody>
-                {paginatedProducts.map(product => (
-                  <tr key={product.id}>
-                    <td>{product.id}</td>
-                    <td>{product.name}</td>
-                    <td>{product.power_watt || '-'} Вт</td>
-                    <td>{product.socket_type || '-'}</td>
-                    <td style={{ color: '#E67E22', fontWeight: 'bold' }}>
-                      {Number(product.price).toLocaleString()} ₽
-                    </td>
+                {orders.map(order => (
+                  <tr key={order.id}>
+                    <td>{order.order_number}</td>
+                    <td>{order.customer_name}</td>
+                    <td>{order.customer_phone}</td>
+                    <td>{order.total_amount} ₽</td>
                     <td>
-                      <input 
-                        type="number" 
-                        className="stock-input"
-                        value={product.stock} 
-                        onChange={e => handleStockUpdate(product.id, parseInt(e.target.value))} 
-                      />
+                      <span className={`status-badge ${getStatusBadgeClass(order.status)}`}>
+                        {getStatusText(order.status)}
+                      </span>
                     </td>
+                    <td>{new Date(order.created_at).toLocaleDateString()}</td>
                     <td>
-                      <button className="edit-btn-admin" onClick={() => handleEditProduct(product)}>
-                        ред.
-                      </button>
-                      <button className="delete-btn-admin" onClick={() => handleDeleteProduct(product.id)}>
-                        уд.
-                      </button>
+                      <select
+                        value={order.status}
+                        onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value)}
+                        className="status-select"
+                      >
+                        <option value="new">Новый</option>
+                        <option value="confirmed">Подтвержден</option>
+                        <option value="paid">Оплачен</option>
+                        <option value="shipped">Отправлен</option>
+                        <option value="delivered">Доставлен</option>
+                        <option value="cancelled">Отменен</option>
+                      </select>
                     </td>
                   </tr>
                 ))}
-                {products.length === 0 && (
-                  <tr>
-                    <td colSpan="7" style={{ textAlign: 'center', padding: '40px' }}>
-                      Нет товаров. Создайте первый!
-                    </td>
-                  </tr>
-                )}
               </tbody>
             </table>
-          </div>
-          
-          {totalProductPages > 1 && (
-            <div className="pagination-admin">
-              <button 
-                onClick={() => setCurrentPage(p => Math.max(1, p-1))}
-                disabled={currentPage === 1}
-              >
-                ←
-              </button>
-              {[...Array(totalProductPages)].map((_, i) => (
-                <button
-                  key={i}
-                  className={currentPage === i + 1 ? 'active' : ''}
-                  onClick={() => setCurrentPage(i + 1)}
-                >
-                  {i + 1}
-                </button>
-              ))}
-              <button 
-                onClick={() => setCurrentPage(p => Math.min(totalProductPages, p+1))}
-                disabled={currentPage === totalProductPages}
-              >
-                →
-              </button>
-            </div>
           )}
-        </>
-      )}
-
-      {activeTab === 'orders' && (
-        <div className="table-wrapper">
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Номер заказа</th>
-                <th>Клиент</th>
-                <th>Телефон</th>
-                <th>Сумма</th>
-                <th>Статус</th>
-                <th>Действия</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders.map(order => (
-                <tr key={order.id}>
-                  <td>{order.id}</td>
-                  <td>{order.order_number}</td>
-                  <td>{order.customer_name}</td>
-                  <td>{order.customer_phone}</td>
-                  <td style={{ fontWeight: 'bold' }}>{Number(order.total_amount).toLocaleString()} ₽</td>
-                  <td>
-                    <select
-                      className="status-select-admin"
-                      value={order.status}
-                      onChange={e => handleStatusUpdate(order.id, e.target.value)}
-                    >
-                      <option value="new">Новый</option>
-                      <option value="confirmed">Подтвержден</option>
-                      <option value="paid">Оплачен</option>
-                      <option value="shipped">Отправлен</option>
-                      <option value="delivered">Доставлен</option>
-                      <option value="cancelled">Отменен</option>
-                    </select>
-                  </td>
-                  <td>
-                    <span style={{ 
-                      display: 'inline-block',
-                      padding: '4px 8px',
-                      borderRadius: '4px',
-                      fontSize: '12px',
-                      background: order.status === 'delivered' ? 'rgba(76,175,80,0.15)' : 
-                                order.status === 'cancelled' ? 'rgba(231,76,60,0.15)' : 'rgba(255,214,0,0.15)',
-                      color: order.status === 'delivered' ? '#4CAF50' :
-                             order.status === 'cancelled' ? '#E74C3C' : '#FFC107'
-                    }}>
-                      {getStatusName(order.status)}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-              {orders.length === 0 && (
-                <tr>
-                  <td colSpan="7" style={{ textAlign: 'center', padding: '40px' }}>
-                    Нет заказов
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
         </div>
       )}
     </div>

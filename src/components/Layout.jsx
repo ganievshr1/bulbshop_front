@@ -9,7 +9,7 @@ const Layout = ({ children }) => {
         {children}
       </main>
       <footer className="footer">
-        <p>© 2024 Мой магазин. Все права защищены.</p>
+        <p>© 2026 Мой магазин лампочек. Все права защищены.</p>
       </footer>
     </div>
   );
