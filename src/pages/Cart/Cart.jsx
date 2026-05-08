@@ -1,10 +1,13 @@
-import { useCart } from '../../context/CartContext';
+import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
+import { selectCartItems, selectTotalPrice, removeFromCart, updateQuantity } from '../../store/cartSlice';
 import styles from './Cart.module.css';
 
 const Cart = () => {
-  const { cart, removeFromCart, updateQuantity, getTotalPrice } = useCart();
+  const dispatch = useDispatch();
   const navigate = useNavigate();
+  const cart = useSelector(selectCartItems);
+  const totalPrice = useSelector(selectTotalPrice);
 
   if (cart.length === 0) {
     return (
@@ -17,8 +20,6 @@ const Cart = () => {
       </div>
     );
   }
-
-  const totalPrice = Number(getTotalPrice()) || 0;
 
   const formatPrice = (price) => {
     const num = Number(price);
@@ -50,18 +51,14 @@ const Cart = () => {
               <span className={styles.quantityLabel}>Кол-во:</span>
               <div className={styles.quantityButtons}>
                 <button
-                  onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                  onClick={() => dispatch(updateQuantity({ id: item.id, quantity: item.quantity - 1 }))}
                   disabled={item.quantity <= 1}
-                >
-                  −
-                </button>
+                >−</button>
                 <span>{item.quantity}</span>
                 <button
-                  onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                  onClick={() => dispatch(updateQuantity({ id: item.id, quantity: item.quantity + 1 }))}
                   disabled={item.quantity >= (item.stock || 99)}
-                >
-                  +
-                </button>
+                >+</button>
               </div>
             </div>
 
@@ -71,10 +68,8 @@ const Cart = () => {
 
             <button
               className={styles.removeBtn}
-              onClick={() => removeFromCart(item.id)}
-            >
-              Уд.
-            </button>
+              onClick={() => dispatch(removeFromCart(item.id))}
+            >Уд.</button>
           </div>
         ))}
       </div>

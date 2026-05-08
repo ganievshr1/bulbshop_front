@@ -1,15 +1,14 @@
 ﻿import { useState, useEffect, useCallback } from 'react';
-import { getProducts, getCategories } from '../../services/api';
-import { useCart } from '../../context/CartContext';
-import { useSearch } from '../../context/SearchContext';
+import { useSelector, useDispatch } from 'react-redux';
+import { fetchProducts, fetchCategories } from '../../store/productsSlice';
+import { selectSearchQuery, clearSearch } from '../../store/searchSlice';
 import ProductCard from '../../components/ProductCard/ProductCard';
 import styles from './Catalog.module.css';
 
 const Catalog = () => {
-  const [allProducts, setAllProducts] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const dispatch = useDispatch();
+  const { items: allProducts, loading, error } = useSelector(state => state.products);
+  const searchQuery = useSelector(selectSearchQuery);
 
   const [filters, setFilters] = useState({
     socket_type: '',
@@ -21,31 +20,10 @@ const Catalog = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const productsPerPage = 9;
 
-  const { addToCart } = useCart();
-  const { searchQuery, clearSearch } = useSearch();
-
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const [productsResult, categoriesResult] = await Promise.all([
-        getProducts(),
-        getCategories(),
-      ]);
-
-      if (!productsResult.success) {
-        throw new Error(productsResult.error || 'Ошибка загрузки товаров');
-      }
-
-      setAllProducts(Array.isArray(productsResult.data) ? productsResult.data : []);
-      setCategories(Array.isArray(categoriesResult.data) ? categoriesResult.data : []);
-    } catch (err) {
-      setError(err.message || 'Не удалось загрузить данные');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const loadData = useCallback(() => {
+    dispatch(fetchProducts());
+    dispatch(fetchCategories());
+  }, [dispatch]);
 
   useEffect(() => {
     loadData();
@@ -64,33 +42,18 @@ const Catalog = () => {
         if (!nameMatch && !descMatch && !skuMatch && !socketMatch) return false;
       }
 
-      if (filters.socket_type && product.socket_type !== filters.socket_type) {
-        return false;
-      }
-
-      if (filters.min_price && product.price < Number(filters.min_price)) {
-        return false;
-      }
-
-      if (filters.max_price && product.price > Number(filters.max_price)) {
-        return false;
-      }
-
-      if (filters.in_stock_only && product.stock <= 0) {
-        return false;
-      }
+      if (filters.socket_type && product.socket_type !== filters.socket_type) return false;
+      if (filters.min_price && product.price < Number(filters.min_price)) return false;
+      if (filters.max_price && product.price > Number(filters.max_price)) return false;
+      if (filters.in_stock_only && product.stock <= 0) return false;
 
       return true;
     })
     .sort((a, b) => {
       switch (sortBy) {
-        case 'price_asc':
-          return (a.price || 0) - (b.price || 0);
-        case 'price_desc':
-          return (b.price || 0) - (a.price || 0);
-        case 'name':
-        default:
-          return (a.name || '').localeCompare(b.name || '', 'ru');
+        case 'price_asc': return (a.price || 0) - (b.price || 0);
+        case 'price_desc': return (b.price || 0) - (a.price || 0);
+        default: return (a.name || '').localeCompare(b.name || '', 'ru');
       }
     });
 
@@ -102,13 +65,13 @@ const Catalog = () => {
   );
 
   const handleFilterChange = (key, value) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
+    setFilters(prev => ({ ...prev, [key]: value }));
     setCurrentPage(1);
   };
 
   const resetFilters = () => {
     setFilters({ socket_type: '', min_price: '', max_price: '', in_stock_only: false });
-    clearSearch();
+    dispatch(clearSearch());
     setSortBy('name');
     setCurrentPage(1);
   };
@@ -131,9 +94,7 @@ const Catalog = () => {
           <span className={styles.errorIcon}>⚠️</span>
           <h2>Ошибка загрузки</h2>
           <p>{error}</p>
-          <button className={styles.retryBtn} onClick={loadData}>
-            Попробовать снова
-          </button>
+          <button className={styles.retryBtn} onClick={loadData}>Попробовать снова</button>
         </div>
       </div>
     );
@@ -146,22 +107,22 @@ const Catalog = () => {
           <span className={styles.emptyIcon}>📦</span>
           <h2>Товары не найдены</h2>
           <p>В данный момент каталог пуст</p>
-          <button className={styles.retryBtn} onClick={loadData}>
-            Обновить
-          </button>
+          <button className={styles.retryBtn} onClick={loadData}>Обновить</button>
         </div>
       </div>
     );
   }
 
-  const socketTypes = [...new Set(allProducts.map((p) => p.socket_type).filter(Boolean))];
+  const socketTypes = [...new Set(allProducts.map(p => p.socket_type).filter(Boolean))];
 
   return (
     <div className={styles.container}>
       <div className={styles.contentWrapper}>
+        {/* ЛЕВАЯ ПАНЕЛЬ ФИЛЬТРОВ */}
         <aside className={styles.sidebar}>
           <h3 className={styles.filterTitle}>Фильтры</h3>
 
+          {/* Способ получения */}
           <div className={styles.filterSection}>
             <h4>Способ получения</h4>
             <label className={styles.checkboxLabel}>
@@ -181,6 +142,7 @@ const Catalog = () => {
             </label>
           </div>
 
+          {/* Наличие в магазинах */}
           <div className={styles.filterSection}>
             <h4>Наличие в магазинах</h4>
             <label className={styles.checkboxLabel}>
@@ -195,6 +157,7 @@ const Catalog = () => {
             </label>
           </div>
 
+          {/* Снижение цены */}
           <div className={styles.filterSection}>
             <h4>Снижение цены</h4>
             <label className={styles.checkboxLabel}>
@@ -204,6 +167,7 @@ const Catalog = () => {
             </label>
           </div>
 
+          {/* Цена */}
           <div className={styles.filterSection}>
             <h4>Цена, ₽</h4>
             <div className={styles.priceInputs}>
@@ -222,6 +186,7 @@ const Catalog = () => {
             </div>
           </div>
 
+          {/* Город */}
           <div className={styles.filterSection}>
             <h4>Город</h4>
             <div className={styles.citySelector}>
@@ -229,6 +194,7 @@ const Catalog = () => {
             </div>
           </div>
 
+          {/* Тип цоколя */}
           <div className={styles.filterSection}>
             <h4>Тип цоколя</h4>
             <select
@@ -243,6 +209,7 @@ const Catalog = () => {
             </select>
           </div>
 
+          {/* Рекомендуем */}
           <div className={styles.filterSection}>
             <h4>Рекомендуем</h4>
             <label className={styles.checkboxLabel}>
@@ -251,12 +218,15 @@ const Catalog = () => {
             </label>
           </div>
 
+          {/* Кнопка Показать */}
           <button className={styles.showBtn}>
             Показать {filteredProducts.length} товаров
           </button>
         </aside>
 
+        {/* ПРАВАЯ ОБЛАСТЬ — КАРТОЧКИ ТОВАРОВ */}
         <div className={styles.mainArea}>
+          {/* Сортировка и количество */}
           <div className={styles.sortRow}>
             <span>Найдено: {filteredProducts.length} товаров</span>
             <select
@@ -270,54 +240,35 @@ const Catalog = () => {
             </select>
           </div>
 
+          {/* Результаты поиска */}
           {searchQuery && (
-            <div style={{ marginBottom: '12px', fontSize: '14px', color: '#666' }}>
+            <div className={styles.searchBanner}>
               Результаты поиска: «{searchQuery}»
-              <button 
-                onClick={resetFilters}
-                style={{ 
-                  marginLeft: '8px', 
-                  padding: '2px 8px', 
-                  fontSize: '12px',
-                  cursor: 'pointer',
-                  background: '#f0f0f0',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px'
-                }}
-              >
-                ✕ Сбросить
-              </button>
+              <button onClick={resetFilters}>✕ Сбросить</button>
             </div>
           )}
 
+          {/* Сетка товаров или пустой результат */}
           {paginatedProducts.length === 0 ? (
             <div className={styles.noResults}>
               <p>По вашему запросу ничего не найдено</p>
-              <button className={styles.resetBtn} onClick={resetFilters}>
-                Сбросить фильтры
-              </button>
+              <button className={styles.resetBtn} onClick={resetFilters}>Сбросить фильтры</button>
             </div>
           ) : (
             <div className={styles.productGrid}>
-              {paginatedProducts.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  onAddToCart={addToCart}
-                />
+              {paginatedProducts.map(product => (
+                <ProductCard key={product.id} product={product} />
               ))}
             </div>
           )}
 
+          {/* Пагинация */}
           {totalPages > 1 && (
             <div className={styles.pagination}>
-              <button
-                disabled={currentPage <= 1}
-                onClick={() => setCurrentPage((p) => p - 1)}
-              >
+              <button disabled={currentPage <= 1} onClick={() => setCurrentPage(p => p - 1)}>
                 ← Назад
               </button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
                 <button
                   key={page}
                   className={page === currentPage ? styles.active : ''}
@@ -326,10 +277,7 @@ const Catalog = () => {
                   {page}
                 </button>
               ))}
-              <button
-                disabled={currentPage >= totalPages}
-                onClick={() => setCurrentPage((p) => p + 1)}
-              >
+              <button disabled={currentPage >= totalPages} onClick={() => setCurrentPage(p => p + 1)}>
                 Вперёд →
               </button>
             </div>

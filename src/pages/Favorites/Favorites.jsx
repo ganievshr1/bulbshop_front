@@ -1,12 +1,13 @@
-import { useFavorites } from '../../context/FavoritesContext';
+import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { useCart } from '../../context/CartContext';
+import { selectFavorites, removeFromFavorites } from '../../store/favoritesSlice';
+import { addToCart } from '../../store/cartSlice';
 import styles from './Favorites.module.css';
 
 const Favorites = () => {
-  const { favorites, removeFromFavorites } = useFavorites();
-  const { addToCart } = useCart();
+  const dispatch = useDispatch();
   const navigate = useNavigate();
+  const favorites = useSelector(selectFavorites);
 
   if (favorites.length === 0) {
     return (
@@ -55,7 +56,7 @@ const Favorites = () => {
               <button
                 className={styles.addToCartBtn}
                 onClick={() => {
-                  addToCart(item, 1);
+                  dispatch(addToCart({ product: item, quantity: 1 }));
                   navigate('/cart');
                 }}
                 disabled={item.stock <= 0}
@@ -64,7 +65,7 @@ const Favorites = () => {
               </button>
               <button
                 className={styles.removeBtn}
-                onClick={() => removeFromFavorites(item.id)}
+                onClick={() => dispatch(removeFromFavorites(item.id))}
               >
                 Удалить
               </button>

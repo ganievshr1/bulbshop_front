@@ -4,14 +4,13 @@ import styles from './OrderConformation.module.css';
 const OrderConformation = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { order } = location.state || {};
+  const order = location.state?.order;
 
   if (!order) {
     navigate('/catalog', { replace: true });
     return null;
   }
 
-  // Извлекаем данные — бэкенд возвращает { success: true, data: {...} }
   const orderData = order.data || order;
 
   const formatPrice = (price) => {

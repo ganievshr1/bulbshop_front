@@ -1,33 +1,23 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getProductById } from '../../services/api';
-import { useCart } from '../../context/CartContext';
+import { useSelector, useDispatch } from 'react-redux';
+import { fetchProductById, clearCurrentProduct } from '../../store/productsSlice';
+import { addToCart } from '../../store/cartSlice';
 import styles from './ProductDetail.module.css';
 
 const ProductDetail = () => {
   const { id } = useParams();
-  const [product, setProduct] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [quantity, setQuantity] = useState(1);
-  const { addToCart } = useCart();
+  const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { currentProduct: product, loading, error } = useSelector(state => state.products);
+  const [quantity, setQuantity] = useState(1);
 
   useEffect(() => {
-    loadProduct();
-  }, [id]);
-
-  const loadProduct = async () => {
-    setLoading(true);
-    setError(null);
-    const result = await getProductById(id);
-    if (result.success) {
-      setProduct(result.data);
-    } else {
-      setError(result.error || 'Товар не найден');
-    }
-    setLoading(false);
-  };
+    dispatch(fetchProductById(id));
+    return () => {
+      dispatch(clearCurrentProduct());
+    };
+  }, [id, dispatch]);
 
   const decreaseQuantity = () => {
     if (quantity > 1) setQuantity(quantity - 1);
@@ -39,7 +29,7 @@ const ProductDetail = () => {
 
   const handleAddToCart = () => {
     if (product && product.stock >= quantity) {
-      addToCart(product, quantity);
+      dispatch(addToCart({ product, quantity }));
       navigate('/cart');
     }
   };

@@ -1,17 +1,16 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useCart } from '../../context/CartContext';
-import { useSearch } from '../../context/SearchContext';
-import { useFavorites } from '../../context/FavoritesContext';
+import { useSelector, useDispatch } from 'react-redux';
+import { selectTotalItems } from '../../store/cartSlice';
+import { selectFavoritesCount } from '../../store/favoritesSlice';
+import { updateSearch } from '../../store/searchSlice';
 import styles from './Header.module.css';
 
 const Header = () => {
-  const { getTotalItems } = useCart();
-  const { updateSearch } = useSearch();
-  const { getFavoritesCount } = useFavorites();
-  const itemCount = getTotalItems();
-  const favCount = getFavoritesCount();
+  const dispatch = useDispatch();
   const navigate = useNavigate();
+  const itemCount = useSelector(selectTotalItems);
+  const favCount = useSelector(selectFavoritesCount);
   const [localSearch, setLocalSearch] = useState('');
 
   const handleSearchChange = (e) => {
@@ -20,7 +19,7 @@ const Header = () => {
 
   const performSearch = () => {
     if (localSearch.trim()) {
-      updateSearch(localSearch.trim());
+      dispatch(updateSearch(localSearch.trim()));
       navigate('/catalog');
     }
   };

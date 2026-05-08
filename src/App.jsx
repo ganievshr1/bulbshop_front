@@ -1,7 +1,4 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { CartProvider } from './context/CartContext';
-import { SearchProvider } from './context/SearchContext';
-import { FavoritesProvider } from './context/FavoritesContext';
 import { NotificationProvider } from './context/NotificationContext';
 import Layout from './components/Layout/Layout';
 import Catalog from './pages/Catalog/Catalog';
@@ -15,26 +12,20 @@ import Favorites from './pages/Favorites/Favorites';
 function App() {
   return (
     <NotificationProvider>
-      <CartProvider>
-        <FavoritesProvider>
-          <SearchProvider>
-            <Router>
-              <Layout>
-                <Routes>
-                  <Route path="/" element={<Catalog />} />
-                  <Route path="/catalog" element={<Catalog />} />
-                  <Route path="/product/:id" element={<ProductDetail />} />
-                  <Route path="/cart" element={<Cart />} />
-                  <Route path="/favorites" element={<Favorites />} />
-                  <Route path="/checkout" element={<Checkout />} />
-                  <Route path="/order-conformation" element={<OrderConformation />} />
-                  <Route path="/admin" element={<Admin />} />
-                </Routes>
-              </Layout>
-            </Router>
-          </SearchProvider>
-        </FavoritesProvider>
-      </CartProvider>
+      <Router>
+        <Layout>
+          <Routes>
+            <Route path="/" element={<Catalog />} />
+            <Route path="/catalog" element={<Catalog />} />
+            <Route path="/product/:id" element={<ProductDetail />} />
+            <Route path="/cart" element={<Cart />} />
+            <Route path="/favorites" element={<Favorites />} />
+            <Route path="/checkout" element={<Checkout />} />
+            <Route path="/order-conformation" element={<OrderConformation />} />
+            <Route path="/admin" element={<Admin />} />
+          </Routes>
+        </Layout>
+      </Router>
     </NotificationProvider>
   );
 }

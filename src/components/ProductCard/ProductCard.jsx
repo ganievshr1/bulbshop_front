@@ -1,12 +1,15 @@
 import { useNavigate } from 'react-router-dom';
-import { useFavorites } from '../../context/FavoritesContext';
+import { useDispatch, useSelector } from 'react-redux';
+import { addToCart } from '../../store/cartSlice';
+import { toggleFavorite, selectIsFavorite } from '../../store/favoritesSlice';
 import { useNotification } from '../../context/NotificationContext';
 import styles from './ProductCard.module.css';
 
-const ProductCard = ({ product, onAddToCart }) => {
+const ProductCard = ({ product }) => {
   const navigate = useNavigate();
-  const { toggleFavorite, isFavorite } = useFavorites();
+  const dispatch = useDispatch();
   const { showNotification } = useNotification();
+  const isFavorite = useSelector(selectIsFavorite(product?.id));
 
   if (!product) return null;
 
@@ -16,40 +19,34 @@ const ProductCard = ({ product, onAddToCart }) => {
 
   const handleAddClick = (e) => {
     e.stopPropagation();
-    onAddToCart(product);
+    dispatch(addToCart({ product }));
     showNotification(`«${product.name}» добавлен в корзину`, 'success');
   };
 
   const handleFavoriteClick = (e) => {
     e.stopPropagation();
-    toggleFavorite(product);
-    const wasAdded = !isFavorite(product.id);
-    if (wasAdded) {
+    dispatch(toggleFavorite(product));
+    if (!isFavorite) {
       showNotification(`«${product.name}» добавлен в избранное ❤️`, 'success');
     }
   };
 
   const isInStock = product.stock > 0;
   const formatPrice = (price) => Number(price).toLocaleString('ru-RU');
-  const favorite = isFavorite(product.id);
 
   return (
     <div className={styles.card} onClick={handleCardClick}>
       <div className={styles.imageWrapper}>
         {product.image_url ? (
-          <img
-            src={product.image_url}
-            alt={product.name}
-            className={styles.image}
-          />
+          <img src={product.image_url} alt={product.name} className={styles.image} />
         ) : (
           <span className={styles.placeholder}>💡</span>
         )}
         <button 
-          className={`${styles.favBtn} ${favorite ? styles.favActive : ''}`}
+          className={`${styles.favBtn} ${isFavorite ? styles.favActive : ''}`}
           onClick={handleFavoriteClick}
         >
-          {favorite ? '❤️' : '🤍'}
+          {isFavorite ? '❤️' : '🤍'}
         </button>
       </div>
 
