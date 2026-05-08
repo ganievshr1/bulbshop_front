@@ -1,0 +1,20 @@
+.appLayout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--lm-bg);
+}
+
+.mainContent {
+  flex: 1;
+  width: 100%;
+}
+
+.footer {
+  background: var(--lm-dark);
+  color: var(--lm-gray-light);
+  text-align: center;
+  padding: 20px;
+  margin-top: 40px;
+  font-size: 13px;
+}

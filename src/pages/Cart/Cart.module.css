@@ -1,0 +1,285 @@
+.page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px 40px;
+}
+
+.pageTitle {
+  font-size: 28px;
+  font-weight: bold;
+  color: var(--lm-dark);
+  margin-bottom: 24px;
+}
+
+/* ===== ПУСТАЯ КОРЗИНА ===== */
+.empty {
+  text-align: center;
+  padding: 80px 20px;
+  background: var(--lm-white);
+  border-radius: 12px;
+  box-shadow: var(--lm-shadow);
+}
+
+.empty h2 {
+  font-size: 24px;
+  color: var(--lm-gray);
+  margin-bottom: 8px;
+}
+
+.empty p {
+  color: var(--lm-gray-light);
+  margin-bottom: 24px;
+}
+
+.empty button {
+  padding: 12px 32px;
+  background: var(--lm-yellow);
+  border: none;
+  border-radius: 24px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: var(--lm-transition);
+}
+
+.empty button:hover {
+  background: var(--lm-yellow-hover);
+}
+
+/* ===== ТОВАРЫ ===== */
+.itemsList {
+  margin-bottom: 20px;
+}
+
+.item {
+  background: var(--lm-white);
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  box-shadow: var(--lm-shadow);
+}
+
+.itemImage {
+  width: 80px;
+  height: 80px;
+  background: #F0F0F0;
+  border-radius: var(--lm-radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.itemImage img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.itemImage span {
+  font-size: 36px;
+}
+
+.itemInfo {
+  flex: 2;
+}
+
+.itemName {
+  font-size: 15px;
+  font-weight: bold;
+  color: var(--lm-dark);
+  margin-bottom: 4px;
+}
+
+.itemSku {
+  font-size: 12px;
+  color: var(--lm-gray-light);
+  display: block;
+  margin-bottom: 4px;
+}
+
+.itemBadge {
+  display: inline-block;
+  background: var(--lm-green-light);
+  color: var(--lm-green);
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.quantityControl {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.quantityLabel {
+  font-size: 14px;
+  color: var(--lm-gray);
+}
+
+.quantityButtons {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--lm-border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.quantityButtons button {
+  width: 30px;
+  height: 30px;
+  background: var(--lm-bg);
+  border: none;
+  font-size: 14px;
+  color: var(--lm-gray);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--lm-transition);
+}
+
+.quantityButtons button:hover:not(:disabled) {
+  background: var(--lm-border);
+}
+
+.quantityButtons button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.quantityButtons span {
+  width: 46px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: bold;
+  color: var(--lm-dark);
+  background: var(--lm-white);
+}
+
+.itemPrice {
+  font-size: 18px;
+  font-weight: bold;
+  color: var(--lm-dark);
+  white-space: nowrap;
+}
+
+.removeBtn {
+  width: 50px;
+  height: 30px;
+  background: var(--lm-red);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: var(--lm-transition);
+}
+
+.removeBtn:hover {
+  background: #c0392b;
+}
+
+/* ===== ИТОГО ===== */
+.summary {
+  background: var(--lm-white);
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: var(--lm-shadow);
+  margin-bottom: 20px;
+}
+
+.totalRow {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.totalRow > span:first-child {
+  font-size: 18px;
+  font-weight: bold;
+  color: var(--lm-dark);
+}
+
+.totalPrice {
+  font-size: 26px;
+  font-weight: bold;
+  color: var(--lm-dark);
+}
+
+.totalNote {
+  font-size: 13px;
+  color: var(--lm-gray-light);
+}
+
+/* ===== КНОПКИ ===== */
+.actions {
+  display: flex;
+  gap: 16px;
+}
+
+.continueBtn {
+  padding: 14px 24px;
+  background: var(--lm-gray-light);
+  color: white;
+  border: none;
+  border-radius: 24px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: var(--lm-transition);
+}
+
+.continueBtn:hover {
+  background: var(--lm-gray);
+}
+
+.checkoutBtn {
+  padding: 14px 24px;
+  background: var(--lm-yellow);
+  color: var(--lm-dark);
+  border: none;
+  border-radius: 24px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: var(--lm-transition);
+  margin-left: auto;
+}
+
+.checkoutBtn:hover {
+  background: var(--lm-yellow-hover);
+}
+
+/* ===== АДАПТИВ ===== */
+@media (max-width: 768px) {
+  .page {
+    padding: 16px;
+  }
+
+  .item {
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 16px;
+  }
+
+  .itemImage {
+    width: 60px;
+    height: 60px;
+  }
+
+  .actions {
+    flex-direction: column;
+  }
+
+  .checkoutBtn {
+    margin-left: 0;
+  }
+}

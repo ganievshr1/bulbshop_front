@@ -1,32 +1,41 @@
-import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { CartProvider } from './context/CartContext';
-import Layout from './components/Layout';
-import Catalog from './pages/Catalog';
-import ProductDetail from './pages/ProductDetail';
-import Cart from './pages/Cart';
-import Checkout from './pages/Checkout';
-import OrderConfirmation from './pages/OrderConfirmation';
-import Admin from './pages/Admin';
-import './App.css';
+import { SearchProvider } from './context/SearchContext';
+import { FavoritesProvider } from './context/FavoritesContext';
+import { NotificationProvider } from './context/NotificationContext';
+import Layout from './components/Layout/Layout';
+import Catalog from './pages/Catalog/Catalog';
+import ProductDetail from './pages/ProductDetail/ProductDetail';
+import Cart from './pages/Cart/Cart';
+import Checkout from './pages/Checkout/Checkout';
+import OrderConformation from './pages/OrderConformation/OrderConformation';
+import Admin from './pages/Admin/Admin';
+import Favorites from './pages/Favorites/Favorites';
 
 function App() {
   return (
-    <CartProvider>
-      <Router>
-        <Layout>
-          <Routes>
-            <Route path="/" element={<Catalog />} />
-            <Route path="/catalog" element={<Catalog />} />
-            <Route path="/product/:id" element={<ProductDetail />} />
-            <Route path="/cart" element={<Cart />} />
-            <Route path="/checkout" element={<Checkout />} />
-            <Route path="/order-confirmation" element={<OrderConfirmation />} />
-            <Route path="/admin" element={<Admin />} />
-          </Routes>
-        </Layout>
-      </Router>
-    </CartProvider>
+    <NotificationProvider>
+      <CartProvider>
+        <FavoritesProvider>
+          <SearchProvider>
+            <Router>
+              <Layout>
+                <Routes>
+                  <Route path="/" element={<Catalog />} />
+                  <Route path="/catalog" element={<Catalog />} />
+                  <Route path="/product/:id" element={<ProductDetail />} />
+                  <Route path="/cart" element={<Cart />} />
+                  <Route path="/favorites" element={<Favorites />} />
+                  <Route path="/checkout" element={<Checkout />} />
+                  <Route path="/order-conformation" element={<OrderConformation />} />
+                  <Route path="/admin" element={<Admin />} />
+                </Routes>
+              </Layout>
+            </Router>
+          </SearchProvider>
+        </FavoritesProvider>
+      </CartProvider>
+    </NotificationProvider>
   );
 }
 

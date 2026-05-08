@@ -1,0 +1,221 @@
+.page {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 24px 40px;
+}
+
+.pageTitle {
+  font-size: 28px;
+  font-weight: bold;
+  color: var(--lm-dark);
+  margin-bottom: 24px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 680px 1fr;
+  gap: 30px;
+  align-items: start;
+}
+
+/* ===== ФОРМА ===== */
+.form {
+  background: var(--lm-white);
+  border-radius: 12px;
+  padding: 32px;
+  box-shadow: var(--lm-shadow);
+}
+
+.formGroup {
+  margin-bottom: 20px;
+}
+
+.formGroup label {
+  display: block;
+  font-size: 15px;
+  font-weight: bold;
+  color: var(--lm-dark);
+  margin-bottom: 8px;
+}
+
+.formGroup input,
+.formGroup textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--lm-border);
+  border-radius: var(--lm-radius);
+  font-size: 14px;
+  color: var(--lm-dark);
+  outline: none;
+  transition: var(--lm-transition);
+  background: var(--lm-white);
+}
+
+.formGroup input::placeholder,
+.formGroup textarea::placeholder {
+  color: var(--lm-gray-light);
+}
+
+.formGroup input:focus,
+.formGroup textarea:focus {
+  border-color: var(--lm-yellow);
+  box-shadow: 0 0 0 2px rgba(255, 214, 0, 0.2);
+}
+
+.paymentMethods {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.paymentOption {
+  padding: 12px 20px;
+  background: var(--lm-white);
+  border: 1px solid var(--lm-border);
+  border-radius: var(--lm-radius);
+  font-size: 14px;
+  color: var(--lm-gray);
+  cursor: pointer;
+  transition: var(--lm-transition);
+}
+
+.paymentOption:hover {
+  border-color: var(--lm-yellow);
+}
+
+.paymentOption.active {
+  background: var(--lm-yellow);
+  border-color: var(--lm-yellow);
+  color: var(--lm-dark);
+  font-weight: bold;
+}
+
+.submitBtn {
+  width: 100%;
+  padding: 16px;
+  background: var(--lm-yellow);
+  color: var(--lm-dark);
+  border: none;
+  border-radius: 24px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: var(--lm-transition);
+  margin-top: 8px;
+}
+
+.submitBtn:hover:not(:disabled) {
+  background: var(--lm-yellow-hover);
+}
+
+.submitBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ===== БЛОК ЗАКАЗА ===== */
+.orderSummary {
+  background: var(--lm-white);
+  border-radius: 12px;
+  padding: 32px;
+  box-shadow: var(--lm-shadow);
+  position: sticky;
+  top: 80px;
+}
+
+.orderSummary h2 {
+  font-size: 18px;
+  font-weight: bold;
+  color: var(--lm-dark);
+  margin-bottom: 20px;
+}
+
+.orderItems {
+  margin-bottom: 16px;
+}
+
+.orderItem {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  font-size: 14px;
+  color: var(--lm-gray);
+}
+
+.orderItem:not(:last-child) {
+  border-bottom: 1px solid #F0F0F0;
+}
+
+.orderTotal {
+  display: flex;
+  justify-content: space-between;
+  padding: 16px 0;
+  font-size: 18px;
+  font-weight: bold;
+  color: var(--lm-dark);
+  border-top: 2px solid var(--lm-yellow);
+}
+
+.totalNote {
+  font-size: 12px;
+  color: var(--lm-gray-light);
+  margin-bottom: 20px;
+}
+
+.commentSection {
+  margin-top: 16px;
+}
+
+.commentSection label {
+  display: block;
+  font-size: 15px;
+  font-weight: bold;
+  color: var(--lm-dark);
+  margin-bottom: 8px;
+}
+
+.commentSection textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--lm-border);
+  border-radius: var(--lm-radius);
+  font-size: 13px;
+  color: var(--lm-dark);
+  outline: none;
+  resize: vertical;
+  font-family: inherit;
+  transition: var(--lm-transition);
+}
+
+.commentSection textarea::placeholder {
+  color: var(--lm-gray-light);
+}
+
+.commentSection textarea:focus {
+  border-color: var(--lm-yellow);
+}
+
+/* ===== АДАПТИВ ===== */
+@media (max-width: 1024px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .orderSummary {
+    position: static;
+  }
+}
+
+@media (max-width: 768px) {
+  .page {
+    padding: 16px;
+  }
+
+  .form {
+    padding: 20px;
+  }
+
+  .paymentMethods {
+    flex-direction: column;
+  }
+}

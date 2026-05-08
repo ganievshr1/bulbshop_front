@@ -1,7 +1,5 @@
 # Зависимости
 /node_modules
-/node_modules/*
-/node_modules/
 
 # Логи
 npm-debug.log*
@@ -9,6 +7,7 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+*.log
 
 # Файлы окружения
 .env
@@ -19,9 +18,7 @@ lerna-debug.log*
 
 # Результаты сборки
 /dist
-/dist/*
 /build
-/build/*
 
 # Кэш
 .cache
@@ -41,11 +38,9 @@ Thumbs.db
 
 # Файлы покрытия тестов
 /coverage
-/coverage/*
 .nyc_output
 
 # Временные файлы
-*.log
 *.tmp
 *.temp
 
@@ -57,3 +52,9 @@ Thumbs.db
 
 # Файлы Vite
 .vite
+
+# Файлы окружения для разных сред (если появятся)
+.env.*.local
+
+# Локальные файлы разработчика
+*.local

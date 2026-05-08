@@ -1,23 +1,28 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import { createContext, useState, useContext, useEffect } from 'react';
 
 const CartContext = createContext();
 
 export const useCart = () => {
-  return useContext(CartContext);
+  const context = useContext(CartContext);
+  if (!context) {
+    throw new Error('useCart должен использоваться внутри CartProvider');
+  }
+  return context;
 };
 
 export const CartProvider = ({ children }) => {
   const [cart, setCart] = useState([]);
+  const [notification, setNotification] = useState(null);
 
   // Загрузка корзины из localStorage
   useEffect(() => {
-    const savedCart = localStorage.getItem('cart');
-    if (savedCart) {
-      try {
+    try {
+      const savedCart = localStorage.getItem('cart');
+      if (savedCart) {
         setCart(JSON.parse(savedCart));
-      } catch (e) {
-        console.error('Failed to load cart', e);
       }
+    } catch (e) {
+      console.error('Ошибка загрузки корзины:', e);
     }
   }, []);
 
@@ -27,10 +32,10 @@ export const CartProvider = ({ children }) => {
   }, [cart]);
 
   const addToCart = (product, quantity = 1) => {
-    setCart(prev => {
-      const existing = prev.find(item => item.id === product.id);
+    setCart((prev) => {
+      const existing = prev.find((item) => item.id === product.id);
       if (existing) {
-        return prev.map(item =>
+        return prev.map((item) =>
           item.id === product.id
             ? { ...item, quantity: item.quantity + quantity }
             : item
@@ -41,7 +46,7 @@ export const CartProvider = ({ children }) => {
   };
 
   const removeFromCart = (productId) => {
-    setCart(prev => prev.filter(item => item.id !== productId));
+    setCart((prev) => prev.filter((item) => item.id !== productId));
   };
 
   const updateQuantity = (productId, quantity) => {
@@ -49,10 +54,21 @@ export const CartProvider = ({ children }) => {
       removeFromCart(productId);
       return;
     }
-    setCart(prev =>
-      prev.map(item =>
+    setCart((prev) =>
+      prev.map((item) =>
         item.id === productId ? { ...item, quantity } : item
       )
+    );
+  };
+
+  const getTotalItems = () => {
+    return cart.reduce((total, item) => total + item.quantity, 0);
+  };
+
+  const getTotalPrice = () => {
+    return cart.reduce(
+      (total, item) => total + (item.price || 0) * item.quantity,
+      0
     );
   };
 
@@ -60,27 +76,15 @@ export const CartProvider = ({ children }) => {
     setCart([]);
   };
 
-  const getTotalPrice = () => {
-    return cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  };
-
-  const getTotalItems = () => {
-    return cart.reduce((sum, item) => sum + item.quantity, 0);
-  };
-
   const value = {
     cart,
     addToCart,
     removeFromCart,
     updateQuantity,
-    clearCart,
-    getTotalPrice,
     getTotalItems,
+    getTotalPrice,
+    clearCart,
   };
 
-  return (
-    <CartContext.Provider value={value}>
-      {children}
-    </CartContext.Provider>
-  );
+  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 };
