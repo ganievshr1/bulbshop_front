@@ -1,11 +1,18 @@
 import { useState, useEffect } from 'react';
 import {
-  getProducts, createProduct, updateProduct, deleteProduct, updateProductStock,
-  getOrders, updateOrderStatus, getCategories, createCategory, updateCategory
+  getAdminProducts, createProduct, updateProduct, deleteProduct, updateProductStock,
+  getAdminOrders, updateOrderStatus, getCategories, createCategory, updateCategory,
+  adminLogin, adminLogout, getCurrentAdmin, isAuthenticated
 } from '../../services/api';
 import styles from './Admin.module.css';
 
 const Admin = () => {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [admin, setAdmin] = useState(null);
+  const [loginForm, setLoginForm] = useState({ login: '', password: '' });
+  const [loginError, setLoginError] = useState('');
+  const [loginLoading, setLoginLoading] = useState(false);
+  
   const [activeTab, setActiveTab] = useState('products');
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -42,12 +49,50 @@ const Admin = () => {
   });
 
   useEffect(() => {
-    loadCategories();
+    checkAuth();
   }, []);
 
-  useEffect(() => {
-    loadData();
-  }, [activeTab]);
+  const checkAuth = async () => {
+    if (isAuthenticated()) {
+      const result = await getCurrentAdmin();
+      if (result.success && result.data) {
+        setAdmin(result.data);
+        setIsLoggedIn(true);
+        await loadCategories();
+        await loadData();
+      } else {
+        await handleLogout();
+      }
+    }
+  };
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setLoginLoading(true);
+    setLoginError('');
+    
+    const result = await adminLogin(loginForm.login, loginForm.password);
+    
+    if (result.success) {
+      setIsLoggedIn(true);
+      setAdmin(result.admin);
+      setLoginForm({ login: '', password: '' });
+      await loadCategories();
+      await loadData();
+    } else {
+      setLoginError(result.error || 'Неверный логин или пароль');
+    }
+    setLoginLoading(false);
+  };
+
+  const handleLogout = async () => {
+    await adminLogout();
+    setIsLoggedIn(false);
+    setAdmin(null);
+    setProducts([]);
+    setOrders([]);
+    setCategories([]);
+  };
 
   const loadCategories = async () => {
     try {
@@ -67,7 +112,7 @@ const Admin = () => {
     setLoading(true);
     setError(null);
     try {
-      const result = await getProducts();
+      const result = await getAdminProducts({ page: currentPage, limit: itemsPerPage });
       if (result.success && Array.isArray(result.data)) {
         setProducts(result.data);
       } else {
@@ -87,11 +132,9 @@ const Admin = () => {
     setLoading(true);
     setError(null);
     try {
-      const result = await getOrders();
+      const result = await getAdminOrders();
       if (result.success && Array.isArray(result.data)) {
         setOrders(result.data);
-      } else if (Array.isArray(result)) {
-        setOrders(result);
       } else {
         setError('Не удалось загрузить заказы');
         setOrders([]);
@@ -105,17 +148,64 @@ const Admin = () => {
     }
   };
 
-  const loadData = () => {
+  const loadData = async () => {
     if (activeTab === 'products') {
-      loadProducts();
+      await loadProducts();
     } else if (activeTab === 'orders') {
-      loadOrders();
+      await loadOrders();
     } else if (activeTab === 'categories') {
-      loadCategories();
+      await loadCategories();
     }
   };
 
-  // ===== ОБРАБОТЧИКИ ТОВАРОВ =====
+  // Страница входа
+  if (!isLoggedIn) {
+    return (
+      <div className={styles.loginPage}>
+        <div className={styles.loginCard}>
+          <h1 className={styles.loginTitle}>🔐 Вход в админ-панель</h1>
+          <p className={styles.loginSubtitle}>Завод лампочек</p>
+          
+          <form onSubmit={handleLogin} className={styles.loginForm}>
+            <div className={styles.formGroup}>
+              <label>Логин</label>
+              <input
+                type="text"
+                value={loginForm.login}
+                onChange={(e) => setLoginForm({ ...loginForm, login: e.target.value })}
+                placeholder="admin"
+                required
+                autoFocus
+              />
+            </div>
+            
+            <div className={styles.formGroup}>
+              <label>Пароль</label>
+              <input
+                type="password"
+                value={loginForm.password}
+                onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
+                placeholder="••••••"
+                required
+              />
+            </div>
+            
+            {loginError && (
+              <div className={styles.loginError}>
+                ❌ {loginError}
+              </div>
+            )}
+            
+            <button type="submit" className={styles.loginBtn} disabled={loginLoading}>
+              {loginLoading ? 'Вход...' : 'Войти'}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // Обработчики товаров
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -157,7 +247,7 @@ const Admin = () => {
 
       if (result.success) {
         resetForm();
-        loadProducts();
+        await loadProducts();
       }
     } catch (error) {
       console.error('Ошибка сохранения товара:', error);
@@ -192,7 +282,7 @@ const Admin = () => {
         const result = await deleteProduct(id);
         if (result.success) {
           alert('Товар удален');
-          loadProducts();
+          await loadProducts();
         } else {
           alert('Ошибка при удалении товара');
         }
@@ -200,21 +290,6 @@ const Admin = () => {
         console.error('Ошибка удаления товара:', error);
         alert('Ошибка при удалении товара');
       }
-    }
-  };
-
-  const handleUpdateStock = async (id, newStock) => {
-    try {
-      const result = await updateProductStock(id, parseInt(newStock));
-      if (result.success) {
-        alert('Остаток обновлен');
-        loadProducts();
-      } else {
-        alert('Ошибка при обновлении остатка');
-      }
-    } catch (error) {
-      console.error('Ошибка обновления остатка:', error);
-      alert('Ошибка при обновлении остатка');
     }
   };
 
@@ -239,7 +314,7 @@ const Admin = () => {
     });
   };
 
-  // ===== ОБРАБОТЧИКИ КАТЕГОРИЙ =====
+  // Обработчики категорий
   const handleCategoryInputChange = (e) => {
     const { name, value } = e.target;
     setCategoryFormData(prev => ({ ...prev, [name]: value }));
@@ -267,7 +342,7 @@ const Admin = () => {
 
       if (result.success) {
         resetCategoryForm();
-        loadCategories();
+        await loadCategories();
       }
     } catch (error) {
       console.error('Ошибка сохранения категории:', error);
@@ -290,13 +365,13 @@ const Admin = () => {
     setCategoryFormData({ name: '', description: '' });
   };
 
-  // ===== ОБРАБОТЧИКИ ЗАКАЗОВ =====
+  // Обработчики заказов
   const handleUpdateOrderStatus = async (orderId, newStatus) => {
     try {
       const result = await updateOrderStatus(orderId, newStatus);
       if (result.success) {
         alert('Статус заказа обновлен');
-        loadOrders();
+        await loadOrders();
       } else {
         alert('Ошибка при обновлении статуса');
       }
@@ -308,12 +383,12 @@ const Admin = () => {
 
   const getStatusText = (status) => {
     switch (status) {
-      case 'new': return 'Новый';
-      case 'confirmed': return 'Подтвержден';
-      case 'paid': return 'Оплачен';
-      case 'shipped': return 'Отправлен';
-      case 'delivered': return 'Доставлен';
-      case 'cancelled': return 'Отменен';
+      case 'new': return '🆕 Новый';
+      case 'confirmed': return '✅ Подтвержден';
+      case 'paid': return '💳 Оплачен';
+      case 'shipped': return '🚚 Отправлен';
+      case 'delivered': return '📦 Доставлен';
+      case 'cancelled': return '❌ Отменен';
       default: return status;
     }
   };
@@ -328,8 +403,13 @@ const Admin = () => {
   return (
     <div className={styles.adminPage}>
       <header className={styles.adminHeader}>
-        <h1 className={styles.adminLogo}>Завод лампочек — Админка</h1>
-        <button className={styles.logoutBtn}>Выход</button>
+        <div>
+          <h1 className={styles.adminLogo}>🏭 Завод лампочек — Админка</h1>
+          {admin && <span className={styles.adminName}>{admin.full_name} ({admin.role})</span>}
+        </div>
+        <button className={styles.logoutBtn} onClick={handleLogout}>
+          🚪 Выход
+        </button>
       </header>
 
       <div className={styles.adminContent}>
@@ -337,7 +417,7 @@ const Admin = () => {
 
         {error && (
           <div className={styles.errorBanner}>
-            {error}
+            <span>⚠️ {error}</span>
             <button onClick={() => { setError(null); loadData(); }}>
               Повторить
             </button>
@@ -348,21 +428,21 @@ const Admin = () => {
           <div className={styles.tabs}>
             <button
               className={`${styles.tab} ${activeTab === 'products' ? styles.active : ''}`}
-              onClick={() => { setActiveTab('products'); setCurrentPage(1); }}
+              onClick={() => { setActiveTab('products'); setCurrentPage(1); loadProducts(); }}
             >
-              Товары
+              📦 Товары
             </button>
             <button
               className={`${styles.tab} ${activeTab === 'orders' ? styles.active : ''}`}
-              onClick={() => { setActiveTab('orders'); setCurrentPage(1); }}
+              onClick={() => { setActiveTab('orders'); setCurrentPage(1); loadOrders(); }}
             >
-              Заказы
+              📋 Заказы
             </button>
             <button
               className={`${styles.tab} ${activeTab === 'categories' ? styles.active : ''}`}
-              onClick={() => { setActiveTab('categories'); setCurrentPage(1); }}
+              onClick={() => { setActiveTab('categories'); setCurrentPage(1); loadCategories(); }}
             >
-              Категории
+              🏷️ Категории
             </button>
           </div>
           
@@ -385,10 +465,10 @@ const Admin = () => {
           )}
         </div>
 
-        {/* ===== ФОРМА ТОВАРА ===== */}
+        {/* Форма товара */}
         {showAddForm && activeTab === 'products' && (
           <div className={styles.formSection}>
-            <h3>{editingProduct ? 'Редактирование товара' : 'Добавление нового товара'}</h3>
+            <h3>{editingProduct ? '✏️ Редактирование товара' : '➕ Добавление нового товара'}</h3>
             <form className={styles.productForm} onSubmit={handleSubmit}>
               <div className={styles.formGrid}>
                 <div className={styles.formGroup}>
@@ -413,13 +493,7 @@ const Admin = () => {
                 </div>
                 <div className={styles.formGroup}>
                   <label>Цоколь</label>
-                  <input 
-                    type="text" 
-                    name="socket_type" 
-                    value={formData.socket_type} 
-                    onChange={handleInputChange} 
-                    placeholder="E27, E14, GU10, GU5.3, G9..." 
-                  />
+                  <input type="text" name="socket_type" value={formData.socket_type} onChange={handleInputChange} placeholder="E27, E14, GU10..." />
                 </div>
                 <div className={styles.formGroup}>
                   <label>Мощность (Вт)</label>
@@ -431,13 +505,7 @@ const Admin = () => {
                 </div>
                 <div className={styles.formGroup}>
                   <label>Цветовая температура (K)</label>
-                  <input 
-                    type="number" 
-                    name="color_temp_k" 
-                    value={formData.color_temp_k} 
-                    onChange={handleInputChange} 
-                    placeholder="2700, 4000, 6500..." 
-                  />
+                  <input type="number" name="color_temp_k" value={formData.color_temp_k} onChange={handleInputChange} placeholder="2700, 4000, 6500..." />
                 </div>
                 <div className={styles.formGroup}>
                   <label>Срок службы (часов)</label>
@@ -452,7 +520,7 @@ const Admin = () => {
                   <input type="text" name="form" value={formData.form} onChange={handleInputChange} placeholder="спот, шар, свеча" />
                 </div>
                 <div className={styles.formGroup}>
-                  <label>Цвет свечения (текст)</label>
+                  <label>Цвет свечения</label>
                   <input type="text" name="color_temp" value={formData.color_temp} onChange={handleInputChange} placeholder="нейтральный белый свет" />
                 </div>
                 <div className={styles.formGroup}>
@@ -466,20 +534,20 @@ const Admin = () => {
               </div>
               <div className={styles.formButtons}>
                 <button type="submit" className={styles.submitBtn}>
-                  {editingProduct ? 'Сохранить' : 'Добавить'}
+                  {editingProduct ? '💾 Сохранить' : '➕ Добавить'}
                 </button>
                 <button type="button" className={styles.cancelBtn} onClick={resetForm}>
-                  Отмена
+                  ❌ Отмена
                 </button>
               </div>
             </form>
           </div>
         )}
 
-        {/* ===== ФОРМА КАТЕГОРИИ ===== */}
+        {/* Форма категории */}
         {showCategoryForm && activeTab === 'categories' && (
           <div className={styles.formSection}>
-            <h3>{editingCategory ? 'Редактирование категории' : 'Добавление новой категории'}</h3>
+            <h3>{editingCategory ? '✏️ Редактирование категории' : '➕ Добавление новой категории'}</h3>
             <form className={styles.productForm} onSubmit={handleCategorySubmit}>
               <div className={styles.formGrid}>
                 <div className={styles.formGroup}>
@@ -493,22 +561,24 @@ const Admin = () => {
               </div>
               <div className={styles.formButtons}>
                 <button type="submit" className={styles.submitBtn}>
-                  {editingCategory ? 'Сохранить' : 'Добавить'}
+                  {editingCategory ? '💾 Сохранить' : '➕ Добавить'}
                 </button>
                 <button type="button" className={styles.cancelBtn} onClick={resetCategoryForm}>
-                  Отмена
+                  ❌ Отмена
                 </button>
               </div>
             </form>
           </div>
         )}
 
-        {/* ===== ТАБЛИЦА ТОВАРОВ ===== */}
+        {/* Таблица товаров */}
         {activeTab === 'products' && (
           <div className={styles.tableWrapper}>
-            {products.length === 0 ? (
+            {loading ? (
+              <div className={styles.loadingState}>⏳ Загрузка товаров...</div>
+            ) : products.length === 0 ? (
               <div className={styles.emptyState}>
-                <p>Нет товаров для отображения</p>
+                <p>📭 Нет товаров для отображения</p>
                 {!showAddForm && (
                   <button className={styles.addBtn} onClick={() => setShowAddForm(true)}>
                     + Добавить первый товар
@@ -533,14 +603,16 @@ const Admin = () => {
                     {paginatedProducts.map(product => (
                       <tr key={product.id}>
                         <td>{product.id}</td>
-                        <td>{product.name}</td>
+                        <td className={styles.productName}>{product.name}</td>
                         <td>{product.power_watt ? `${product.power_watt} Вт` : '-'}</td>
                         <td>{product.socket_type || '-'}</td>
-                        <td className={styles.priceCell}>{product.price} ₽</td>
-                        <td className={styles.stockCell}>{product.stock}</td>
+                        <td className={styles.priceCell}>{Number(product.price).toLocaleString('ru-RU')} ₽</td>
+                        <td className={`${styles.stockCell} ${product.stock === 0 ? styles.outOfStock : ''}`}>
+                          {product.stock}
+                        </td>
                         <td>
-                          <button className={styles.editBtn} onClick={() => handleEditProduct(product)}>ред.</button>
-                          <button className={styles.deleteBtn} onClick={() => handleDeleteProduct(product.id)}>уд.</button>
+                          <button className={styles.editBtn} onClick={() => handleEditProduct(product)}>✏️ ред.</button>
+                          <button className={styles.deleteBtn} onClick={() => handleDeleteProduct(product.id)}>🗑️ уд.</button>
                         </td>
                       </tr>
                     ))}
@@ -549,6 +621,9 @@ const Admin = () => {
 
                 {totalPages > 1 && (
                   <div className={styles.pagination}>
+                    <button disabled={currentPage <= 1} onClick={() => setCurrentPage(p => p - 1)}>
+                      ← Назад
+                    </button>
                     {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
                       <button
                         key={page}
@@ -558,6 +633,9 @@ const Admin = () => {
                         {page}
                       </button>
                     ))}
+                    <button disabled={currentPage >= totalPages} onClick={() => setCurrentPage(p => p + 1)}>
+                      Вперёд →
+                    </button>
                   </div>
                 )}
               </>
@@ -565,12 +643,14 @@ const Admin = () => {
           </div>
         )}
 
-        {/* ===== ТАБЛИЦА ЗАКАЗОВ ===== */}
+        {/* Таблица заказов */}
         {activeTab === 'orders' && (
           <div className={styles.tableWrapper}>
-            {orders.length === 0 ? (
+            {loading ? (
+              <div className={styles.loadingState}>⏳ Загрузка заказов...</div>
+            ) : orders.length === 0 ? (
               <div className={styles.emptyState}>
-                <p>Нет заказов для отображения</p>
+                <p>📭 Нет заказов для отображения</p>
               </div>
             ) : (
               <table className={styles.table}>
@@ -587,23 +667,23 @@ const Admin = () => {
                 <tbody>
                   {orders.map(order => (
                     <tr key={order.id}>
-                      <td>{order.order_number}</td>
-                      <td>{order.customer_name}</td>
-                      <td>{order.total_amount} ₽</td>
-                      <td>{getStatusText(order.status)}</td>
-                      <td>{new Date(order.created_at).toLocaleDateString()}</td>
+                      <td className={styles.orderNumber}>{order.order_number}</td>
+                      <td className={styles.customerName}>{order.customer_name}</td>
+                      <td className={styles.priceCell}>{Number(order.total_amount).toLocaleString('ru-RU')} ₽</td>
+                      <td className={styles.statusCell}>{getStatusText(order.status)}</td>
+                      <td>{new Date(order.created_at).toLocaleDateString('ru-RU')}</td>
                       <td>
                         <select
                           value={order.status}
                           onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value)}
                           className={styles.statusSelect}
                         >
-                          <option value="new">Новый</option>
-                          <option value="confirmed">Подтвержден</option>
-                          <option value="paid">Оплачен</option>
-                          <option value="shipped">Отправлен</option>
-                          <option value="delivered">Доставлен</option>
-                          <option value="cancelled">Отменен</option>
+                          <option value="new">🆕 Новый</option>
+                          <option value="confirmed">✅ Подтвержден</option>
+                          <option value="paid">💳 Оплачен</option>
+                          <option value="shipped">🚚 Отправлен</option>
+                          <option value="delivered">📦 Доставлен</option>
+                          <option value="cancelled">❌ Отменен</option>
                         </select>
                       </td>
                     </tr>
@@ -614,12 +694,14 @@ const Admin = () => {
           </div>
         )}
 
-        {/* ===== ТАБЛИЦА КАТЕГОРИЙ ===== */}
+        {/* Таблица категорий */}
         {activeTab === 'categories' && (
           <div className={styles.tableWrapper}>
-            {categories.length === 0 ? (
+            {loading ? (
+              <div className={styles.loadingState}>⏳ Загрузка категорий...</div>
+            ) : categories.length === 0 ? (
               <div className={styles.emptyState}>
-                <p>Нет категорий для отображения</p>
+                <p>📭 Нет категорий для отображения</p>
                 {!showCategoryForm && (
                   <button className={styles.addBtn} onClick={() => setShowCategoryForm(true)}>
                     + Добавить первую категорию
@@ -641,11 +723,11 @@ const Admin = () => {
                   {categories.map(category => (
                     <tr key={category.id}>
                       <td>{category.id}</td>
-                      <td>{category.name}</td>
-                      <td>{category.description || '-'}</td>
-                      <td>{category.is_active ? '✅' : '❌'}</td>
+                      <td className={styles.categoryName}>{category.name}</td>
+                      <td className={styles.categoryDesc}>{category.description || '-'}</td>
+                      <td className={styles.activeCell}>{category.is_active ? '✅ Да' : '❌ Нет'}</td>
                       <td>
-                        <button className={styles.editBtn} onClick={() => handleEditCategory(category)}>ред.</button>
+                        <button className={styles.editBtn} onClick={() => handleEditCategory(category)}>✏️ ред.</button>
                       </td>
                     </tr>
                   ))}

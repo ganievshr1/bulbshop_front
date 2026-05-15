@@ -3,20 +3,132 @@
   background: var(--lm-bg);
 }
 
+/* ===== СТРАНИЦА ВХОДА ===== */
+.loginPage {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--lm-dark) 0%, #1a1a1a 100%);
+  padding: 20px;
+}
+
+.loginCard {
+  background: var(--lm-white);
+  border-radius: 24px;
+  padding: 48px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  text-align: center;
+}
+
+.loginTitle {
+  font-size: 28px;
+  font-weight: bold;
+  color: var(--lm-dark);
+  margin-bottom: 8px;
+}
+
+.loginSubtitle {
+  font-size: 14px;
+  color: var(--lm-gray-light);
+  margin-bottom: 32px;
+}
+
+.loginForm {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.loginForm .formGroup {
+  text-align: left;
+}
+
+.loginForm .formGroup label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--lm-gray);
+  margin-bottom: 8px;
+}
+
+.loginForm .formGroup input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid var(--lm-border);
+  border-radius: 12px;
+  font-size: 16px;
+  transition: var(--lm-transition);
+}
+
+.loginForm .formGroup input:focus {
+  outline: none;
+  border-color: var(--lm-yellow);
+  box-shadow: 0 0 0 3px rgba(255, 214, 0, 0.1);
+}
+
+.loginError {
+  background: #ffebee;
+  color: #c62828;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.loginBtn {
+  padding: 14px;
+  background: var(--lm-yellow);
+  color: var(--lm-dark);
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: var(--lm-transition);
+  margin-top: 8px;
+}
+
+.loginBtn:hover:not(:disabled) {
+  background: var(--lm-yellow-hover);
+  transform: translateY(-1px);
+}
+
+.loginBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* ===== ХЕДЕР ===== */
 .adminHeader {
   background: var(--lm-dark);
   padding: 0 40px;
-  height: 56px;
+  height: 64px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.adminHeader > div {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
 }
 
 .adminLogo {
   font-size: 20px;
   font-weight: bold;
   color: var(--lm-yellow);
+}
+
+.adminName {
+  font-size: 13px;
+  color: var(--lm-gray-light);
+  background: rgba(255, 255, 255, 0.1);
+  padding: 4px 12px;
+  border-radius: 20px;
 }
 
 .logoutBtn {
@@ -26,9 +138,12 @@
   font-size: 14px;
   cursor: pointer;
   transition: var(--lm-transition);
+  padding: 8px 16px;
+  border-radius: 8px;
 }
 
 .logoutBtn:hover {
+  background: rgba(231, 76, 60, 0.1);
   color: #c0392b;
 }
 
@@ -44,6 +159,14 @@
   font-weight: bold;
   color: var(--lm-dark);
   margin-bottom: 24px;
+}
+
+/* ===== СОСТОЯНИЕ ЗАГРУЗКИ ===== */
+.loadingState {
+  text-align: center;
+  padding: 60px;
+  color: var(--lm-gray);
+  font-size: 16px;
 }
 
 /* ===== БАННЕР ОШИБКИ ===== */
@@ -69,17 +192,24 @@
   font-size: 12px;
 }
 
+.errorBanner button:hover {
+  background: #b71c1c;
+}
+
 /* ===== ТУЛБАР ===== */
 .toolbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 16px;
 }
 
 .tabs {
   display: flex;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
 .tab {
@@ -96,6 +226,7 @@
 
 .tab:hover {
   border-color: var(--lm-yellow);
+  transform: translateY(-1px);
 }
 
 .tab.active {
@@ -118,6 +249,7 @@
 
 .addBtn:hover {
   background: #45a049;
+  transform: translateY(-1px);
 }
 
 /* ===== ФОРМА ===== */
@@ -127,6 +259,18 @@
   padding: 24px;
   margin-bottom: 24px;
   box-shadow: var(--lm-shadow);
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .formSection h3 {
@@ -134,6 +278,8 @@
   font-weight: bold;
   color: var(--lm-dark);
   margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--lm-yellow);
 }
 
 .formGrid {
@@ -143,12 +289,23 @@
   margin-bottom: 20px;
 }
 
+.formGroup {
+  display: flex;
+  flex-direction: column;
+}
+
 .formGroup label {
   display: block;
   font-size: 13px;
   font-weight: 500;
   color: var(--lm-gray);
   margin-bottom: 6px;
+}
+
+.formGroup label.required::after {
+  content: '*';
+  color: var(--lm-red);
+  margin-left: 4px;
 }
 
 .formGroup input,
@@ -173,6 +330,12 @@
   box-shadow: 0 0 0 2px rgba(255, 214, 0, 0.2);
 }
 
+.formGroup input.error,
+.formGroup select.error,
+.formGroup textarea.error {
+  border-color: var(--lm-red);
+}
+
 .formGroup textarea {
   resize: vertical;
   min-height: 60px;
@@ -181,6 +344,8 @@
 .formButtons {
   display: flex;
   gap: 12px;
+  justify-content: flex-end;
+  margin-top: 8px;
 }
 
 .submitBtn {
@@ -191,6 +356,12 @@
   font-size: 14px;
   font-weight: bold;
   cursor: pointer;
+  transition: var(--lm-transition);
+}
+
+.submitBtn:hover {
+  background: var(--lm-yellow-hover);
+  transform: translateY(-1px);
 }
 
 .cancelBtn {
@@ -200,19 +371,25 @@
   border-radius: var(--lm-radius);
   font-size: 14px;
   cursor: pointer;
+  transition: var(--lm-transition);
+}
+
+.cancelBtn:hover {
+  background: #d0d0d0;
 }
 
 /* ===== ТАБЛИЦА ===== */
 .tableWrapper {
   background: var(--lm-white);
   border-radius: 12px;
-  overflow: hidden;
+  overflow-x: auto;
   box-shadow: var(--lm-shadow);
 }
 
 .table {
   width: 100%;
   border-collapse: collapse;
+  min-width: 600px;
 }
 
 .table thead {
@@ -238,13 +415,54 @@
   background: #F9F9F9;
 }
 
+.productName {
+  font-weight: 500;
+  max-width: 250px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.categoryName {
+  font-weight: 500;
+}
+
+.categoryDesc {
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--lm-gray);
+}
+
+.orderNumber {
+  font-weight: 600;
+  color: var(--lm-dark);
+}
+
+.customerName {
+  font-weight: 500;
+}
+
 .priceCell {
   color: var(--lm-orange) !important;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .stockCell {
   color: var(--lm-green) !important;
+  font-weight: 600;
+}
+
+.stockCell.outOfStock {
+  color: var(--lm-red) !important;
+}
+
+.statusCell {
+  font-weight: 500;
+}
+
+.activeCell {
   font-weight: 500;
 }
 
@@ -263,6 +481,7 @@
 
 .editBtn:hover {
   background: var(--lm-yellow-hover);
+  transform: scale(1.02);
 }
 
 .deleteBtn {
@@ -279,6 +498,7 @@
 
 .deleteBtn:hover {
   background: #c0392b;
+  transform: scale(1.02);
 }
 
 .statusSelect {
@@ -289,29 +509,43 @@
   color: var(--lm-dark);
   outline: none;
   cursor: pointer;
+  transition: var(--lm-transition);
+}
+
+.statusSelect:hover {
+  border-color: var(--lm-yellow);
 }
 
 .statusSelect:focus {
   border-color: var(--lm-yellow);
+  box-shadow: 0 0 0 2px rgba(255, 214, 0, 0.2);
 }
 
 /* ===== ПУСТОЕ СОСТОЯНИЕ ===== */
 .emptyState {
   text-align: center;
-  padding: 40px;
-  color: #999;
+  padding: 60px 40px;
+  color: var(--lm-gray-light);
 }
 
 .emptyState p {
-  margin-bottom: 12px;
+  margin-bottom: 16px;
+  font-size: 16px;
+}
+
+.emptyState .addBtn {
+  display: inline-block;
+  margin-top: 8px;
 }
 
 /* ===== ПАГИНАЦИЯ ===== */
 .pagination {
   display: flex;
   justify-content: center;
+  align-items: center;
   gap: 8px;
   padding: 20px;
+  flex-wrap: wrap;
 }
 
 .pagination button {
@@ -321,13 +555,19 @@
   background: var(--lm-white);
   border-radius: 6px;
   cursor: pointer;
-  font-size: 15px;
+  font-size: 14px;
+  font-weight: 500;
   color: var(--lm-dark);
   transition: var(--lm-transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.pagination button:hover {
+.pagination button:hover:not(:disabled) {
   border-color: var(--lm-yellow);
+  background: var(--lm-yellow);
+  transform: translateY(-1px);
 }
 
 .pagination button.active {
@@ -336,10 +576,20 @@
   font-weight: bold;
 }
 
+.pagination button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
 /* ===== АДАПТИВ ===== */
 @media (max-width: 1024px) {
   .formGrid {
     grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .adminContent {
+    padding: 30px;
   }
 }
 
@@ -350,21 +600,98 @@
 
   .toolbar {
     flex-direction: column;
-    gap: 16px;
     align-items: stretch;
   }
 
   .tabs {
     justify-content: center;
   }
+  
+  .tab {
+    flex: 1;
+    text-align: center;
+  }
 
   .formGrid {
     grid-template-columns: 1fr;
   }
-
+  
   .table th,
   .table td {
-    padding: 10px;
+    padding: 10px 12px;
     font-size: 12px;
+  }
+  
+  .editBtn,
+  .deleteBtn {
+    padding: 4px 10px;
+    font-size: 11px;
+  }
+  
+  .pagination button {
+    min-width: 34px;
+    height: 34px;
+    font-size: 12px;
+  }
+  
+  .loginCard {
+    padding: 32px 24px;
+    margin: 16px;
+  }
+  
+  .loginTitle {
+    font-size: 24px;
+  }
+  
+  .adminHeader {
+    padding: 0 20px;
+    height: 56px;
+  }
+  
+  .adminHeader > div {
+    flex-direction: column;
+    gap: 4px;
+  }
+  
+  .adminLogo {
+    font-size: 16px;
+  }
+  
+  .adminName {
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .adminContent {
+    padding: 16px;
+  }
+  
+  .table th,
+  .table td {
+    padding: 8px;
+    font-size: 11px;
+  }
+  
+  .editBtn,
+  .deleteBtn {
+    padding: 3px 8px;
+    font-size: 10px;
+    margin-right: 4px;
+  }
+  
+  .statusSelect {
+    padding: 4px 6px;
+    font-size: 11px;
+  }
+  
+  .pagination {
+    gap: 4px;
+  }
+  
+  .pagination button {
+    min-width: 30px;
+    height: 30px;
+    font-size: 11px;
   }
 }
