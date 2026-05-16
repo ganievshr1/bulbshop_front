@@ -87,6 +87,38 @@ export const isAuthenticated = () => {
   return !!getAdminToken();
 };
 
+// ==================== АДМИН: СМЕНА ПАРОЛЯ ====================
+
+export const changeAdminPassword = async (currentPassword, newPassword) => {
+  const token = getAdminToken();
+  if (!token) return { success: false, error: 'Не авторизован' };
+  
+  try {
+    const response = await fetch(`${ADMIN_API_URL}/admin/change-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ 
+        current_password: currentPassword, 
+        new_password: newPassword 
+      }),
+    });
+    
+    const data = await response.json();
+    
+    if (!response.ok) {
+      return { success: false, error: data.detail || 'Ошибка смены пароля' };
+    }
+    
+    return { success: true, message: data.message };
+  } catch (error) {
+    console.error('API Error (changeAdminPassword):', error);
+    return { success: false, error: error.message };
+  }
+};
+
 // ==================== ТОВАРЫ (публичные) ====================
 
 export const getProducts = async (filters = {}) => {

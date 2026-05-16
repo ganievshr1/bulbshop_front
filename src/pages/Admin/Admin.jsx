@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import {
   getAdminProducts, createProduct, updateProduct, deleteProduct, updateProductStock,
   getAdminOrders, updateOrderStatus, getCategories, createCategory, updateCategory,
-  adminLogin, adminLogout, getCurrentAdmin, isAuthenticated
+  adminLogin, adminLogout, getCurrentAdmin, isAuthenticated, changeAdminPassword
 } from '../../services/api';
 import styles from './Admin.module.css';
 
@@ -25,6 +25,17 @@ const Admin = () => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [showCategoryForm, setShowCategoryForm] = useState(false);
   const itemsPerPage = 10;
+
+  // Состояния для смены пароля
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
 
   const [formData, setFormData] = useState({
     name: '',
@@ -92,6 +103,45 @@ const Admin = () => {
     setProducts([]);
     setOrders([]);
     setCategories([]);
+  };
+
+  // Обработчик смены пароля
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    setPasswordError('');
+    setPasswordSuccess('');
+    
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordError('Новый пароль и подтверждение не совпадают');
+      return;
+    }
+    
+    if (passwordForm.newPassword.length < 4) {
+      setPasswordError('Новый пароль должен содержать минимум 4 символа');
+      return;
+    }
+    
+    setPasswordLoading(true);
+    
+    const result = await changeAdminPassword(passwordForm.currentPassword, passwordForm.newPassword);
+    
+    if (result.success) {
+      setPasswordSuccess(result.message || 'Пароль успешно изменен');
+      setPasswordForm({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      });
+      // Через 2 секунды закрываем модалку
+      setTimeout(() => {
+        setShowPasswordModal(false);
+        setPasswordSuccess('');
+      }, 2000);
+    } else {
+      setPasswordError(result.error || 'Ошибка при смене пароля');
+    }
+    
+    setPasswordLoading(false);
   };
 
   const loadCategories = async () => {
@@ -407,9 +457,17 @@ const Admin = () => {
           <h1 className={styles.adminLogo}>🏭 Завод лампочек — Админка</h1>
           {admin && <span className={styles.adminName}>{admin.full_name} ({admin.role})</span>}
         </div>
-        <button className={styles.logoutBtn} onClick={handleLogout}>
-          🚪 Выход
-        </button>
+        <div className={styles.headerButtons}>
+          <button 
+            className={styles.changePasswordBtn}
+            onClick={() => setShowPasswordModal(true)}
+          >
+            🔑 Сменить пароль
+          </button>
+          <button className={styles.logoutBtn} onClick={handleLogout}>
+            🚪 Выход
+          </button>
+        </div>
       </header>
 
       <div className={styles.adminContent}>
@@ -737,6 +795,73 @@ const Admin = () => {
           </div>
         )}
       </div>
+
+      {/* Модальное окно смены пароля */}
+      {showPasswordModal && (
+        <div className={styles.modalOverlay} onClick={() => setShowPasswordModal(false)}>
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h3>🔑 Смена пароля</h3>
+              <button className={styles.modalClose} onClick={() => setShowPasswordModal(false)}>✕</button>
+            </div>
+            
+            <form onSubmit={handlePasswordChange} className={styles.passwordForm}>
+              <div className={styles.formGroup}>
+                <label>Текущий пароль *</label>
+                <input
+                  type="password"
+                  value={passwordForm.currentPassword}
+                  onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                  required
+                  autoFocus
+                />
+              </div>
+              
+              <div className={styles.formGroup}>
+                <label>Новый пароль *</label>
+                <input
+                  type="password"
+                  value={passwordForm.newPassword}
+                  onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                  required
+                />
+                <small className={styles.formHint}>Минимум 4 символа</small>
+              </div>
+              
+              <div className={styles.formGroup}>
+                <label>Подтвердите новый пароль *</label>
+                <input
+                  type="password"
+                  value={passwordForm.confirmPassword}
+                  onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                  required
+                />
+              </div>
+              
+              {passwordError && (
+                <div className={styles.passwordError}>
+                  ❌ {passwordError}
+                </div>
+              )}
+              
+              {passwordSuccess && (
+                <div className={styles.passwordSuccess}>
+                  ✅ {passwordSuccess}
+                </div>
+              )}
+              
+              <div className={styles.modalButtons}>
+                <button type="button" className={styles.cancelBtn} onClick={() => setShowPasswordModal(false)}>
+                  Отмена
+                </button>
+                <button type="submit" className={styles.submitBtn} disabled={passwordLoading}>
+                  {passwordLoading ? 'Смена...' : 'Сменить пароль'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

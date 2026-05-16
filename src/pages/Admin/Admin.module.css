@@ -695,3 +695,207 @@
     font-size: 11px;
   }
 }
+
+/* ===== КНОПКИ В ХЕДЕРЕ ===== */
+.headerButtons {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.changePasswordBtn {
+  padding: 8px 16px;
+  background: transparent;
+  border: 1px solid var(--lm-yellow);
+  border-radius: 8px;
+  color: var(--lm-yellow);
+  font-size: 14px;
+  cursor: pointer;
+  transition: var(--lm-transition);
+}
+
+.changePasswordBtn:hover {
+  background: rgba(255, 214, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+/* ===== МОДАЛЬНОЕ ОКНО ===== */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  backdrop-filter: blur(4px);
+}
+
+.modal {
+  background: var(--lm-white);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 480px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  animation: modalSlideIn 0.2s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--lm-border);
+}
+
+.modalHeader h3 {
+  font-size: 18px;
+  font-weight: bold;
+  color: var(--lm-dark);
+  margin: 0;
+}
+
+.modalClose {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: var(--lm-gray-light);
+  transition: var(--lm-transition);
+  padding: 4px;
+}
+
+.modalClose:hover {
+  color: var(--lm-red);
+}
+
+.passwordForm {
+  padding: 24px;
+}
+
+.passwordForm .formGroup {
+  margin-bottom: 20px;
+}
+
+.passwordForm .formGroup label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--lm-gray);
+  margin-bottom: 8px;
+}
+
+.passwordForm .formGroup input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--lm-border);
+  border-radius: 8px;
+  font-size: 14px;
+  transition: var(--lm-transition);
+}
+
+.passwordForm .formGroup input:focus {
+  outline: none;
+  border-color: var(--lm-yellow);
+  box-shadow: 0 0 0 2px rgba(255, 214, 0, 0.2);
+}
+
+.formHint {
+  display: block;
+  font-size: 12px;
+  color: var(--lm-gray-light);
+  margin-top: 6px;
+}
+
+.passwordError {
+  background: #ffebee;
+  color: #c62828;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+.passwordSuccess {
+  background: #e8f5e9;
+  color: #2e7d32;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+.modalButtons {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.modalButtons .cancelBtn {
+  padding: 10px 20px;
+  background: var(--lm-border);
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: var(--lm-transition);
+}
+
+.modalButtons .cancelBtn:hover {
+  background: #d0d0d0;
+}
+
+.modalButtons .submitBtn {
+  padding: 10px 24px;
+  background: var(--lm-yellow);
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: var(--lm-transition);
+}
+
+.modalButtons .submitBtn:hover:not(:disabled) {
+  background: var(--lm-yellow-hover);
+}
+
+.modalButtons .submitBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Адаптив для модалки */
+@media (max-width: 560px) {
+  .modal {
+    margin: 16px;
+    max-width: calc(100% - 32px);
+  }
+  
+  .passwordForm {
+    padding: 20px;
+  }
+  
+  .modalButtons {
+    flex-direction: column;
+  }
+  
+  .modalButtons button {
+    width: 100%;
+  }
+}
