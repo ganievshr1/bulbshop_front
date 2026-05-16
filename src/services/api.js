@@ -3,14 +3,13 @@ const ADMIN_API_URL = import.meta.env.VITE_ADMIN_API_URL || 'http://localhost/ap
 
 // ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
 
-// Функция для повторных попыток запроса
 const fetchWithRetry = async (url, options, maxRetries = 2, delay = 1000) => {
   let lastError;
   
   for (let i = 0; i <= maxRetries; i++) {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 секунд таймаут
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
       
       const response = await fetch(url, {
         ...options,
@@ -32,7 +31,6 @@ const fetchWithRetry = async (url, options, maxRetries = 2, delay = 1000) => {
   throw lastError;
 };
 
-// Проверка, существует ли товар
 const checkProductExists = async (id) => {
   const token = getAdminToken();
   if (!token) return null;
@@ -55,7 +53,6 @@ const checkProductExists = async (id) => {
 
 // ==================== АУТЕНТИФИКАЦИЯ ====================
 
-// Хранение токена
 let adminToken = localStorage.getItem('admin_token');
 
 export const setAdminToken = (token) => {
@@ -71,7 +68,6 @@ export const getAdminToken = () => {
   return adminToken || localStorage.getItem('admin_token');
 };
 
-// Админ логин
 export const adminLogin = async (login, password) => {
   try {
     const response = await fetchWithRetry(`${ADMIN_API_URL}/admin/login`, {
@@ -94,7 +90,6 @@ export const adminLogin = async (login, password) => {
   }
 };
 
-// Админ логаут
 export const adminLogout = async () => {
   const token = getAdminToken();
   if (token) {
@@ -115,7 +110,6 @@ export const adminLogout = async () => {
   localStorage.removeItem('admin_data');
 };
 
-// Получить текущего админа
 export const getCurrentAdmin = async () => {
   const token = getAdminToken();
   if (!token) return { success: false, data: null };
@@ -135,16 +129,28 @@ export const getCurrentAdmin = async () => {
   }
 };
 
-// Проверка авторизации
 export const isAuthenticated = () => {
   return !!getAdminToken();
 };
 
 // ==================== АДМИН: СМЕНА ПАРОЛЯ ====================
 
-export const changeAdminPassword = async (currentPassword, newPassword) => {
+export const changeAdminPassword = async (currentPassword, newPassword, confirmPassword) => {
   const token = getAdminToken();
   if (!token) return { success: false, error: 'Не авторизован' };
+  
+  // Валидация на клиенте
+  if (!currentPassword || currentPassword.length === 0) {
+    return { success: false, error: 'Введите текущий пароль' };
+  }
+  
+  if (!newPassword || newPassword.length < 4) {
+    return { success: false, error: 'Новый пароль должен содержать минимум 4 символа' };
+  }
+  
+  if (newPassword !== confirmPassword) {
+    return { success: false, error: 'Новый пароль и подтверждение не совпадают' };
+  }
   
   try {
     const response = await fetchWithRetry(`${ADMIN_API_URL}/admin/change-password`, {
@@ -155,20 +161,45 @@ export const changeAdminPassword = async (currentPassword, newPassword) => {
       },
       body: JSON.stringify({ 
         current_password: currentPassword, 
-        new_password: newPassword 
+        new_password: newPassword,
+        confirm_password: confirmPassword
       }),
     });
     
-    const data = await response.json();
+    let data;
+    const responseText = await response.text();
     
-    if (!response.ok) {
-      return { success: false, error: data.detail || 'Ошибка смены пароля' };
+    try {
+      data = JSON.parse(responseText);
+    } catch (e) {
+      data = { detail: responseText || 'Неизвестная ошибка' };
     }
     
-    return { success: true, message: data.message };
+    if (!response.ok) {
+      let errorMessage = 'Ошибка смены пароля';
+      
+      if (data && typeof data === 'object') {
+        if (data.detail && typeof data.detail === 'string') {
+          errorMessage = data.detail;
+        } else if (data.error && typeof data.error === 'string') {
+          errorMessage = data.error;
+        } else if (data.message && typeof data.message === 'string') {
+          errorMessage = data.message;
+        }
+      }
+      
+      return { success: false, error: errorMessage };
+    }
+    
+    const message = data && data.message && typeof data.message === 'string' 
+      ? data.message 
+      : 'Пароль успешно изменен';
+    
+    return { success: true, message };
+    
   } catch (error) {
     console.error('API Error (changeAdminPassword):', error);
-    return { success: false, error: error.message };
+    return { success: false, error: 'Сетевая ошибка: ' + error.message };
   }
 };
 
@@ -229,9 +260,8 @@ export const getCategoryById = async (id) => {
   }
 };
 
-// ==================== АДМИН: ТОВАРЫ (через Admin Service) ====================
+// ==================== АДМИН: ТОВАРЫ ====================
 
-// Получить все товары (включая неактивные) - админская версия с серверной пагинацией
 export const getAdminProducts = async (filters = {}) => {
   const token = getAdminToken();
   if (!token) return { success: false, error: 'Не авторизован', data: [], pagination: null };
@@ -271,7 +301,6 @@ export const getAdminProducts = async (filters = {}) => {
   }
 };
 
-// Создать товар (админ)
 export const createProduct = async (productData) => {
   const token = getAdminToken();
   if (!token) return { success: false, error: 'Не авторизован', data: null };
@@ -299,7 +328,6 @@ export const createProduct = async (productData) => {
   }
 };
 
-// Обновить товар (админ)
 export const updateProduct = async (id, productData) => {
   const token = getAdminToken();
   if (!token) return { success: false, error: 'Не авторизован', data: null };
@@ -327,7 +355,6 @@ export const updateProduct = async (id, productData) => {
   }
 };
 
-// Удалить товар (админ) - УЛУЧШЕННАЯ ВЕРСИЯ
 export const deleteProduct = async (id) => {
   const token = getAdminToken();
   if (!token) return { success: false, error: 'Не авторизован' };
@@ -340,12 +367,10 @@ export const deleteProduct = async (id) => {
       },
     });
     
-    // 204 No Content - успешное удаление
     if (response.status === 204) {
       return { success: true };
     }
     
-    // 200 OK с телом ответа
     if (response.ok) {
       try {
         const data = await response.json();
@@ -355,35 +380,26 @@ export const deleteProduct = async (id) => {
       }
     }
     
-    // Если ответ не успешный, пробуем получить ошибку
     const errorData = await response.json().catch(() => ({}));
     return { success: false, error: errorData.detail || 'Ошибка удаления товара' };
     
   } catch (error) {
     console.error('API Error (deleteProduct):', error);
     
-    // При сетевой ошибке проверяем, удалился ли товар
-    console.log(`Сетевая ошибка при удалении товара ${id}, проверяем состояние...`);
-    
     const exists = await checkProductExists(id);
     
-    // Если товар не найден (существовал, но теперь нет) - удаление успешно
     if (exists === false) {
-      console.log(`Товар ${id} успешно удалён, несмотря на сетевую ошибку`);
       return { success: true };
     }
     
-    // Если не удалось проверить состояние или товар всё ещё существует
     if (exists === true) {
       return { success: false, error: 'Сетевая ошибка, но товар не удалён. Попробуйте снова.' };
     }
     
-    // Если не удалось проверить состояние
     return { success: false, error: error.message };
   }
 };
 
-// Обновить остаток товара (админ)
 export const updateProductStock = async (id, stock) => {
   const token = getAdminToken();
   if (!token) return { success: false, error: 'Не авторизован', data: null };
@@ -452,7 +468,7 @@ export const updateCategory = async (id, categoryData) => {
   }
 };
 
-// ==================== АДМИН: ЗАКАЗЫ (через Admin Service) ====================
+// ==================== АДМИН: ЗАКАЗЫ ====================
 
 export const getAdminOrders = async (filters = {}) => {
   const token = getAdminToken();
@@ -517,7 +533,7 @@ export const updateOrderStatus = async (id, status) => {
   }
 };
 
-// ==================== ПУБЛИЧНЫЕ ЗАКАЗЫ (для клиентов) ====================
+// ==================== ПУБЛИЧНЫЕ ЗАКАЗЫ ====================
 
 export const createOrder = async (orderData) => {
   try {
@@ -547,7 +563,7 @@ export const getOrders = async () => {
   }
 };
 
-// ==================== АУДИТ (только для супер-админов) ====================
+// ==================== АУДИТ ====================
 
 export const getAuditLogs = async (filters = {}) => {
   const token = getAdminToken();

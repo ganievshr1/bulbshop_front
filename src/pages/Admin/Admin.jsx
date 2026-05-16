@@ -29,7 +29,7 @@ const Admin = () => {
   
   const [showAddForm, setShowAddForm] = useState(false);
   const [showCategoryForm, setShowCategoryForm] = useState(false);
-  const [deleteLoading, setDeleteLoading] = useState(null); // id товара, который удаляется
+  const [deleteLoading, setDeleteLoading] = useState(null);
 
   // Состояния для смены пароля
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -111,41 +111,93 @@ const Admin = () => {
     setCurrentPage(1);
   };
 
+  // ==================== ИСПРАВЛЕННАЯ ФУНКЦИЯ СМЕНЫ ПАРОЛЯ ====================
   const handlePasswordChange = async (e) => {
     e.preventDefault();
+    
+    // Сброс предыдущих сообщений
     setPasswordError('');
     setPasswordSuccess('');
     
-    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+    // Получаем значения из формы
+    const currentPass = passwordForm.currentPassword?.trim() || '';
+    const newPass = passwordForm.newPassword?.trim() || '';
+    const confirmPass = passwordForm.confirmPassword?.trim() || '';
+    
+    // Валидация
+    if (!currentPass) {
+      setPasswordError('Введите текущий пароль');
+      return;
+    }
+    
+    if (!newPass) {
+      setPasswordError('Введите новый пароль');
+      return;
+    }
+    
+    if (newPass.length < 4) {
+      setPasswordError('Новый пароль должен содержать минимум 4 символа');
+      return;
+    }
+    
+    if (newPass !== confirmPass) {
       setPasswordError('Новый пароль и подтверждение не совпадают');
       return;
     }
     
-    if (passwordForm.newPassword.length < 4) {
-      setPasswordError('Новый пароль должен содержать минимум 4 символа');
+    if (newPass === currentPass) {
+      setPasswordError('Новый пароль должен отличаться от текущего');
       return;
     }
     
     setPasswordLoading(true);
     
-    const result = await changeAdminPassword(passwordForm.currentPassword, passwordForm.newPassword);
-    
-    if (result.success) {
-      setPasswordSuccess(result.message || 'Пароль успешно изменен');
-      setPasswordForm({
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: '',
-      });
-      setTimeout(() => {
-        setShowPasswordModal(false);
-        setPasswordSuccess('');
-      }, 2000);
-    } else {
-      setPasswordError(result.error || 'Ошибка при смене пароля');
+    try {
+      const result = await changeAdminPassword(currentPass, newPass, confirmPass);
+      
+      // Проверяем успешность результата
+      if (result && result.success === true) {
+        // Успешная смена пароля
+        const successMsg = result.message && typeof result.message === 'string' 
+          ? result.message 
+          : 'Пароль успешно изменен';
+        
+        setPasswordSuccess(successMsg);
+        
+        // Очищаем форму
+        setPasswordForm({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: '',
+        });
+        
+        // Закрываем модальное окно через 2 секунды
+        setTimeout(() => {
+          setShowPasswordModal(false);
+          setPasswordSuccess('');
+        }, 2000);
+      } else {
+        // Обработка ошибки
+        let errorMsg = 'Ошибка при смене пароля';
+        
+        if (result && result.error) {
+          if (typeof result.error === 'string') {
+            errorMsg = result.error;
+          } else if (result.error.detail && typeof result.error.detail === 'string') {
+            errorMsg = result.error.detail;
+          } else if (result.error.message && typeof result.error.message === 'string') {
+            errorMsg = result.error.message;
+          }
+        }
+        
+        setPasswordError(errorMsg);
+      }
+    } catch (err) {
+      console.error('Password change error:', err);
+      setPasswordError(err.message || 'Непредвиденная ошибка при смене пароля');
+    } finally {
+      setPasswordLoading(false);
     }
-    
-    setPasswordLoading(false);
   };
 
   const loadCategories = useCallback(async () => {
@@ -162,7 +214,6 @@ const Admin = () => {
     }
   }, [formData.category_id]);
 
-  // Загрузка товаров с серверной пагинацией
   const loadProducts = useCallback(async (page = currentPage, showLoading = true) => {
     if (showLoading) setLoading(true);
     setError(null);
@@ -221,14 +272,12 @@ const Admin = () => {
     }
   }, [activeTab, loadProducts, loadCategories]);
 
-  // Обработчик смены страницы
   const handlePageChange = (newPage) => {
     if (newPage < 1 || newPage > pagination.total_pages) return;
     setCurrentPage(newPage);
     loadProducts(newPage, true);
   };
 
-  // Обновление только метрик пагинации без полной перезагрузки
   const refreshPaginationMetrics = useCallback(async () => {
     try {
       const result = await getAdminProducts({ 
@@ -239,7 +288,6 @@ const Admin = () => {
       if (result.success && result.pagination) {
         setPagination(result.pagination);
         
-        // Если текущая страница больше не существует, переходим на последнюю
         if (currentPage > result.pagination.total_pages && result.pagination.total_pages > 0) {
           setCurrentPage(result.pagination.total_pages);
           await loadProducts(result.pagination.total_pages, false);
@@ -390,19 +438,15 @@ const Admin = () => {
     });
   };
 
-  // УЛУЧШЕННАЯ ФУНКЦИЯ УДАЛЕНИЯ ТОВАРА
   const handleDeleteProduct = async (id) => {
     if (window.confirm('Вы уверены, что хотите удалить этот товар?')) {
-      // Сохраняем информацию о товаре и текущем состоянии
       const deletedProduct = products.find(p => p.id === id);
       const wasLastItemOnPage = products.length === 1;
       const currentPageBefore = currentPage;
       
-      // Оптимистичное обновление - сразу убираем товар из UI
       setProducts(prev => prev.filter(p => p.id !== id));
       setDeleteLoading(id);
       
-      // Оптимистично обновляем пагинацию
       const newTotal = pagination.total - 1;
       const newTotalPages = Math.ceil(newTotal / itemsPerPage);
       setPagination(prev => ({
@@ -415,25 +459,20 @@ const Admin = () => {
         const result = await deleteProduct(id);
         
         if (result.success) {
-          // Успешное удаление - показываем уведомление
           const message = `✅ Товар "${deletedProduct?.name || id}" успешно удален`;
           alert(message);
           
-          // Проверяем, нужно ли перейти на предыдущую страницу
           if (wasLastItemOnPage && currentPageBefore > 1 && newTotalPages < currentPageBefore) {
             const newPage = currentPageBefore - 1;
             setCurrentPage(newPage);
             await loadProducts(newPage, false);
           } else if (products.length === 1 && currentPageBefore === 1 && newTotal === 0) {
-            // Если удалили последний товар на первой странице
             setProducts([]);
             setPagination(prev => ({ ...prev, total: 0, total_pages: 1 }));
           } else {
-            // Обновляем метрики пагинации без полной перезагрузки
             await refreshPaginationMetrics();
           }
         } else {
-          // Ошибка - восстанавливаем товар
           setProducts(prev => [...prev, deletedProduct].sort((a, b) => a.id - b.id));
           setPagination(prev => ({
             ...prev,
@@ -446,17 +485,14 @@ const Admin = () => {
       } catch (error) {
         console.error('Ошибка удаления товара:', error);
         
-        // При ошибке проверяем, удалился ли товар несмотря на ошибку
         try {
           const checkResult = await getAdminProducts({ page: currentPageBefore, limit: itemsPerPage });
           const productStillExists = checkResult.data?.some(p => p.id === id);
           
           if (!productStillExists && checkResult.success) {
-            // Товар всё равно удалился
             alert(`✅ Товар "${deletedProduct?.name || id}" успешно удален`);
             await refreshPaginationMetrics();
           } else {
-            // Восстанавливаем товар
             setProducts(prev => [...prev, deletedProduct].sort((a, b) => a.id - b.id));
             setPagination(prev => ({
               ...prev,
@@ -467,7 +503,6 @@ const Admin = () => {
             setError(error.message);
           }
         } catch (checkError) {
-          // Не удалось проверить - восстанавливаем товар
           setProducts(prev => [...prev, deletedProduct].sort((a, b) => a.id - b.id));
           setPagination(prev => ({
             ...prev,
@@ -595,6 +630,18 @@ const Admin = () => {
     }
   };
 
+  // Функция для закрытия модального окна с очисткой ошибок
+  const closePasswordModal = () => {
+    setShowPasswordModal(false);
+    setPasswordError('');
+    setPasswordSuccess('');
+    setPasswordForm({
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: '',
+    });
+  };
+
   return (
     <div className={styles.adminPage}>
       <header className={styles.adminHeader}>
@@ -620,7 +667,7 @@ const Admin = () => {
 
         {error && (
           <div className={styles.errorBanner}>
-            <span>⚠️ {error}</span>
+            <span>⚠️ {typeof error === 'string' ? error : JSON.stringify(error)}</span>
             <button onClick={() => { setError(null); loadData(); }}>
               Повторить
             </button>
@@ -991,16 +1038,16 @@ const Admin = () => {
         )}
       </div>
 
-      {/* Модальное окно смены пароля */}
+      {/* Модальное окно смены пароля - ИСПРАВЛЕННОЕ */}
       {showPasswordModal && (
-        <div className={styles.modalOverlay} onClick={() => setShowPasswordModal(false)}>
+        <div className={styles.modalOverlay} onClick={closePasswordModal}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
               <h3>🔑 Смена пароля</h3>
-              <button className={styles.modalClose} onClick={() => setShowPasswordModal(false)}>✕</button>
+              <button className={styles.modalClose} onClick={closePasswordModal}>✕</button>
             </div>
             
-            <form onSubmit={handlePasswordChange} className={styles.passwordForm}>
+            <form onSubmit={handlePasswordChange} className={styles.passwordForm} noValidate>
               <div className={styles.formGroup}>
                 <label>Текущий пароль *</label>
                 <input
@@ -1009,6 +1056,7 @@ const Admin = () => {
                   onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
                   required
                   autoFocus
+                  disabled={passwordLoading}
                 />
               </div>
               
@@ -1019,6 +1067,7 @@ const Admin = () => {
                   value={passwordForm.newPassword}
                   onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
                   required
+                  disabled={passwordLoading}
                 />
                 <small className={styles.formHint}>Минимум 4 символа</small>
               </div>
@@ -1030,6 +1079,7 @@ const Admin = () => {
                   value={passwordForm.confirmPassword}
                   onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
                   required
+                  disabled={passwordLoading}
                 />
               </div>
               
@@ -1046,11 +1096,20 @@ const Admin = () => {
               )}
               
               <div className={styles.modalButtons}>
-                <button type="button" className={styles.cancelBtn} onClick={() => setShowPasswordModal(false)}>
+                <button 
+                  type="button" 
+                  className={styles.cancelBtn} 
+                  onClick={closePasswordModal}
+                  disabled={passwordLoading}
+                >
                   Отмена
                 </button>
-                <button type="submit" className={styles.submitBtn} disabled={passwordLoading}>
-                  {passwordLoading ? 'Смена...' : 'Сменить пароль'}
+                <button 
+                  type="submit" 
+                  className={styles.submitBtn} 
+                  disabled={passwordLoading}
+                >
+                  {passwordLoading ? '⏳ Смена...' : '🔑 Сменить пароль'}
                 </button>
               </div>
             </form>
