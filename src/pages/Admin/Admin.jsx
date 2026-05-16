@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   getAdminProducts, createProduct, updateProduct, deleteProduct, updateProductStock,
   getAdminOrders, updateOrderStatus, getCategories, createCategory, updateCategory,
@@ -21,10 +21,15 @@ const Admin = () => {
   const [error, setError] = useState(null);
   const [editingProduct, setEditingProduct] = useState(null);
   const [editingCategory, setEditingCategory] = useState(null);
+  
+  // Пагинация для товаров
   const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, total_pages: 0 });
+  const itemsPerPage = 10;
+  
   const [showAddForm, setShowAddForm] = useState(false);
   const [showCategoryForm, setShowCategoryForm] = useState(false);
-  const itemsPerPage = 10;
+  const [deleteLoading, setDeleteLoading] = useState(null); // id товара, который удаляется
 
   // Состояния для смены пароля
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -103,9 +108,9 @@ const Admin = () => {
     setProducts([]);
     setOrders([]);
     setCategories([]);
+    setCurrentPage(1);
   };
 
-  // Обработчик смены пароля
   const handlePasswordChange = async (e) => {
     e.preventDefault();
     setPasswordError('');
@@ -132,7 +137,6 @@ const Admin = () => {
         newPassword: '',
         confirmPassword: '',
       });
-      // Через 2 секунды закрываем модалку
       setTimeout(() => {
         setShowPasswordModal(false);
         setPasswordSuccess('');
@@ -144,7 +148,7 @@ const Admin = () => {
     setPasswordLoading(false);
   };
 
-  const loadCategories = async () => {
+  const loadCategories = useCallback(async () => {
     try {
       const result = await getCategories();
       if (result.success && Array.isArray(result.data)) {
@@ -156,17 +160,25 @@ const Admin = () => {
     } catch (error) {
       console.error('Ошибка загрузки категорий:', error);
     }
-  };
+  }, [formData.category_id]);
 
-  const loadProducts = async () => {
-    setLoading(true);
+  // Загрузка товаров с серверной пагинацией
+  const loadProducts = useCallback(async (page = currentPage, showLoading = true) => {
+    if (showLoading) setLoading(true);
     setError(null);
     try {
-      const result = await getAdminProducts({ page: currentPage, limit: itemsPerPage });
+      const result = await getAdminProducts({ 
+        page: page, 
+        limit: itemsPerPage 
+      });
+      
       if (result.success && Array.isArray(result.data)) {
         setProducts(result.data);
+        if (result.pagination) {
+          setPagination(result.pagination);
+        }
       } else {
-        setError('Не удалось загрузить товары');
+        setError(result.error || 'Не удалось загрузить товары');
         setProducts([]);
       }
     } catch (error) {
@@ -174,9 +186,9 @@ const Admin = () => {
       setError('Ошибка при загрузке товаров');
       setProducts([]);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
-  };
+  }, [currentPage]);
 
   const loadOrders = async () => {
     setLoading(true);
@@ -198,15 +210,49 @@ const Admin = () => {
     }
   };
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (activeTab === 'products') {
-      await loadProducts();
+      await loadProducts(1, true);
+      setCurrentPage(1);
     } else if (activeTab === 'orders') {
       await loadOrders();
     } else if (activeTab === 'categories') {
       await loadCategories();
     }
+  }, [activeTab, loadProducts, loadCategories]);
+
+  // Обработчик смены страницы
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > pagination.total_pages) return;
+    setCurrentPage(newPage);
+    loadProducts(newPage, true);
   };
+
+  // Обновление только метрик пагинации без полной перезагрузки
+  const refreshPaginationMetrics = useCallback(async () => {
+    try {
+      const result = await getAdminProducts({ 
+        page: currentPage, 
+        limit: itemsPerPage 
+      });
+      
+      if (result.success && result.pagination) {
+        setPagination(result.pagination);
+        
+        // Если текущая страница больше не существует, переходим на последнюю
+        if (currentPage > result.pagination.total_pages && result.pagination.total_pages > 0) {
+          setCurrentPage(result.pagination.total_pages);
+          await loadProducts(result.pagination.total_pages, false);
+        } else if (products.length === 0 && currentPage > 1) {
+          const newPage = currentPage - 1;
+          setCurrentPage(newPage);
+          await loadProducts(newPage, false);
+        }
+      }
+    } catch (error) {
+      console.error('Error refreshing metrics:', error);
+    }
+  }, [currentPage, products.length, loadProducts]);
 
   // Страница входа
   if (!isLoggedIn) {
@@ -255,7 +301,6 @@ const Admin = () => {
     );
   }
 
-  // Обработчики товаров
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -283,25 +328,44 @@ const Admin = () => {
       image_url: formData.image_url || null
     };
 
+    setLoading(true);
+    setError(null);
+
     try {
       let result;
       if (editingProduct) {
         result = await updateProduct(editingProduct.id, productData);
-        if (result.success) alert('Товар успешно обновлен');
-        else alert('Ошибка при обновлении товара');
+        if (result.success) {
+          alert('✅ Товар успешно обновлен');
+        } else {
+          alert('❌ Ошибка при обновлении товара: ' + (result.error || 'Неизвестная ошибка'));
+          setError(result.error);
+          setLoading(false);
+          return;
+        }
       } else {
         result = await createProduct(productData);
-        if (result.success) alert('Товар успешно добавлен');
-        else alert('Ошибка при добавлении товара');
+        if (result.success) {
+          alert('✅ Товар успешно добавлен');
+        } else {
+          alert('❌ Ошибка при добавлении товара: ' + (result.error || 'Неизвестная ошибка'));
+          setError(result.error);
+          setLoading(false);
+          return;
+        }
       }
 
       if (result.success) {
         resetForm();
-        await loadProducts();
+        await loadProducts(1, true);
+        setCurrentPage(1);
       }
     } catch (error) {
       console.error('Ошибка сохранения товара:', error);
-      alert('Ошибка при сохранении товара: ' + error.message);
+      alert('❌ Ошибка при сохранении товара: ' + error.message);
+      setError(error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -326,19 +390,95 @@ const Admin = () => {
     });
   };
 
+  // УЛУЧШЕННАЯ ФУНКЦИЯ УДАЛЕНИЯ ТОВАРА
   const handleDeleteProduct = async (id) => {
     if (window.confirm('Вы уверены, что хотите удалить этот товар?')) {
+      // Сохраняем информацию о товаре и текущем состоянии
+      const deletedProduct = products.find(p => p.id === id);
+      const wasLastItemOnPage = products.length === 1;
+      const currentPageBefore = currentPage;
+      
+      // Оптимистичное обновление - сразу убираем товар из UI
+      setProducts(prev => prev.filter(p => p.id !== id));
+      setDeleteLoading(id);
+      
+      // Оптимистично обновляем пагинацию
+      const newTotal = pagination.total - 1;
+      const newTotalPages = Math.ceil(newTotal / itemsPerPage);
+      setPagination(prev => ({
+        ...prev,
+        total: newTotal,
+        total_pages: newTotalPages > 0 ? newTotalPages : 1
+      }));
+      
       try {
         const result = await deleteProduct(id);
+        
         if (result.success) {
-          alert('Товар удален');
-          await loadProducts();
+          // Успешное удаление - показываем уведомление
+          const message = `✅ Товар "${deletedProduct?.name || id}" успешно удален`;
+          alert(message);
+          
+          // Проверяем, нужно ли перейти на предыдущую страницу
+          if (wasLastItemOnPage && currentPageBefore > 1 && newTotalPages < currentPageBefore) {
+            const newPage = currentPageBefore - 1;
+            setCurrentPage(newPage);
+            await loadProducts(newPage, false);
+          } else if (products.length === 1 && currentPageBefore === 1 && newTotal === 0) {
+            // Если удалили последний товар на первой странице
+            setProducts([]);
+            setPagination(prev => ({ ...prev, total: 0, total_pages: 1 }));
+          } else {
+            // Обновляем метрики пагинации без полной перезагрузки
+            await refreshPaginationMetrics();
+          }
         } else {
-          alert('Ошибка при удалении товара');
+          // Ошибка - восстанавливаем товар
+          setProducts(prev => [...prev, deletedProduct].sort((a, b) => a.id - b.id));
+          setPagination(prev => ({
+            ...prev,
+            total: prev.total + 1,
+            total_pages: Math.ceil((prev.total + 1) / itemsPerPage)
+          }));
+          alert('❌ Ошибка при удалении товара: ' + (result.error || 'Неизвестная ошибка'));
+          setError(result.error);
         }
       } catch (error) {
         console.error('Ошибка удаления товара:', error);
-        alert('Ошибка при удалении товара');
+        
+        // При ошибке проверяем, удалился ли товар несмотря на ошибку
+        try {
+          const checkResult = await getAdminProducts({ page: currentPageBefore, limit: itemsPerPage });
+          const productStillExists = checkResult.data?.some(p => p.id === id);
+          
+          if (!productStillExists && checkResult.success) {
+            // Товар всё равно удалился
+            alert(`✅ Товар "${deletedProduct?.name || id}" успешно удален`);
+            await refreshPaginationMetrics();
+          } else {
+            // Восстанавливаем товар
+            setProducts(prev => [...prev, deletedProduct].sort((a, b) => a.id - b.id));
+            setPagination(prev => ({
+              ...prev,
+              total: prev.total + 1,
+              total_pages: Math.ceil((prev.total + 1) / itemsPerPage)
+            }));
+            alert('❌ Ошибка при удалении товара: ' + error.message);
+            setError(error.message);
+          }
+        } catch (checkError) {
+          // Не удалось проверить - восстанавливаем товар
+          setProducts(prev => [...prev, deletedProduct].sort((a, b) => a.id - b.id));
+          setPagination(prev => ({
+            ...prev,
+            total: prev.total + 1,
+            total_pages: Math.ceil((prev.total + 1) / itemsPerPage)
+          }));
+          alert('❌ Ошибка при удалении товара: ' + error.message);
+          setError(error.message);
+        }
+      } finally {
+        setDeleteLoading(null);
       }
     }
   };
@@ -364,7 +504,6 @@ const Admin = () => {
     });
   };
 
-  // Обработчики категорий
   const handleCategoryInputChange = (e) => {
     const { name, value } = e.target;
     setCategoryFormData(prev => ({ ...prev, [name]: value }));
@@ -378,16 +517,28 @@ const Admin = () => {
       return;
     }
 
+    setLoading(true);
+
     try {
       let result;
       if (editingCategory) {
         result = await updateCategory(editingCategory.id, categoryFormData);
-        if (result.success) alert('Категория обновлена');
-        else alert('Ошибка при обновлении категории');
+        if (result.success) {
+          alert('✅ Категория обновлена');
+        } else {
+          alert('❌ Ошибка при обновлении категории');
+          setLoading(false);
+          return;
+        }
       } else {
         result = await createCategory(categoryFormData);
-        if (result.success) alert('Категория создана');
-        else alert('Ошибка при создании категории');
+        if (result.success) {
+          alert('✅ Категория создана');
+        } else {
+          alert('❌ Ошибка при создании категории');
+          setLoading(false);
+          return;
+        }
       }
 
       if (result.success) {
@@ -396,7 +547,9 @@ const Admin = () => {
       }
     } catch (error) {
       console.error('Ошибка сохранения категории:', error);
-      alert('Ошибка при сохранении категории');
+      alert('❌ Ошибка при сохранении категории: ' + error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -415,19 +568,18 @@ const Admin = () => {
     setCategoryFormData({ name: '', description: '' });
   };
 
-  // Обработчики заказов
   const handleUpdateOrderStatus = async (orderId, newStatus) => {
     try {
       const result = await updateOrderStatus(orderId, newStatus);
       if (result.success) {
-        alert('Статус заказа обновлен');
+        alert('✅ Статус заказа обновлен');
         await loadOrders();
       } else {
-        alert('Ошибка при обновлении статуса');
+        alert('❌ Ошибка при обновлении статуса: ' + (result.error || 'Неизвестная ошибка'));
       }
     } catch (error) {
       console.error('Ошибка обновления статуса:', error);
-      alert('Ошибка при обновлении статуса');
+      alert('❌ Ошибка при обновлении статуса: ' + error.message);
     }
   };
 
@@ -442,13 +594,6 @@ const Admin = () => {
       default: return status;
     }
   };
-
-  const paginatedProducts = products.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-
-  const totalPages = Math.ceil(products.length / itemsPerPage);
 
   return (
     <div className={styles.adminPage}>
@@ -486,19 +631,19 @@ const Admin = () => {
           <div className={styles.tabs}>
             <button
               className={`${styles.tab} ${activeTab === 'products' ? styles.active : ''}`}
-              onClick={() => { setActiveTab('products'); setCurrentPage(1); loadProducts(); }}
+              onClick={() => { setActiveTab('products'); loadProducts(1, true); setCurrentPage(1); }}
             >
               📦 Товары
             </button>
             <button
               className={`${styles.tab} ${activeTab === 'orders' ? styles.active : ''}`}
-              onClick={() => { setActiveTab('orders'); setCurrentPage(1); loadOrders(); }}
+              onClick={() => { setActiveTab('orders'); loadOrders(); }}
             >
               📋 Заказы
             </button>
             <button
               className={`${styles.tab} ${activeTab === 'categories' ? styles.active : ''}`}
-              onClick={() => { setActiveTab('categories'); setCurrentPage(1); loadCategories(); }}
+              onClick={() => { setActiveTab('categories'); loadCategories(); }}
             >
               🏷️ Категории
             </button>
@@ -591,8 +736,8 @@ const Admin = () => {
                 </div>
               </div>
               <div className={styles.formButtons}>
-                <button type="submit" className={styles.submitBtn}>
-                  {editingProduct ? '💾 Сохранить' : '➕ Добавить'}
+                <button type="submit" className={styles.submitBtn} disabled={loading}>
+                  {loading ? '⏳ Сохранение...' : (editingProduct ? '💾 Сохранить' : '➕ Добавить')}
                 </button>
                 <button type="button" className={styles.cancelBtn} onClick={resetForm}>
                   ❌ Отмена
@@ -618,8 +763,8 @@ const Admin = () => {
                 </div>
               </div>
               <div className={styles.formButtons}>
-                <button type="submit" className={styles.submitBtn}>
-                  {editingCategory ? '💾 Сохранить' : '➕ Добавить'}
+                <button type="submit" className={styles.submitBtn} disabled={loading}>
+                  {loading ? '⏳ Сохранение...' : (editingCategory ? '💾 Сохранить' : '➕ Добавить')}
                 </button>
                 <button type="button" className={styles.cancelBtn} onClick={resetCategoryForm}>
                   ❌ Отмена
@@ -658,8 +803,8 @@ const Admin = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {paginatedProducts.map(product => (
-                      <tr key={product.id}>
+                    {products.map(product => (
+                      <tr key={product.id} className={deleteLoading === product.id ? styles.deletingRow : ''}>
                         <td>{product.id}</td>
                         <td className={styles.productName}>{product.name}</td>
                         <td>{product.power_watt ? `${product.power_watt} Вт` : '-'}</td>
@@ -669,33 +814,83 @@ const Admin = () => {
                           {product.stock}
                         </td>
                         <td>
-                          <button className={styles.editBtn} onClick={() => handleEditProduct(product)}>✏️ ред.</button>
-                          <button className={styles.deleteBtn} onClick={() => handleDeleteProduct(product.id)}>🗑️ уд.</button>
+                          <button 
+                            className={styles.editBtn} 
+                            onClick={() => handleEditProduct(product)}
+                            disabled={deleteLoading === product.id}
+                          >
+                            ✏️ ред.
+                          </button>
+                          <button 
+                            className={styles.deleteBtn} 
+                            onClick={() => handleDeleteProduct(product.id)}
+                            disabled={deleteLoading === product.id}
+                          >
+                            {deleteLoading === product.id ? '⏳' : '🗑️ уд.'}
+                          </button>
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
 
-                {totalPages > 1 && (
+                {/* Пагинация */}
+                {pagination.total_pages > 1 && (
                   <div className={styles.pagination}>
-                    <button disabled={currentPage <= 1} onClick={() => setCurrentPage(p => p - 1)}>
+                    <button 
+                      onClick={() => handlePageChange(currentPage - 1)} 
+                      disabled={currentPage <= 1 || loading}
+                    >
                       ← Назад
                     </button>
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                      <button
-                        key={page}
-                        className={page === currentPage ? styles.active : ''}
-                        onClick={() => setCurrentPage(page)}
-                      >
-                        {page}
-                      </button>
-                    ))}
-                    <button disabled={currentPage >= totalPages} onClick={() => setCurrentPage(p => p + 1)}>
+                    
+                    {Array.from({ length: Math.min(pagination.total_pages, 10) }, (_, i) => {
+                      let pageNum;
+                      if (pagination.total_pages <= 10) {
+                        pageNum = i + 1;
+                      } else if (currentPage <= 6) {
+                        pageNum = i + 1;
+                      } else if (currentPage >= pagination.total_pages - 5) {
+                        pageNum = pagination.total_pages - 9 + i;
+                      } else {
+                        pageNum = currentPage - 5 + i;
+                      }
+                      
+                      if (pageNum < 1 || pageNum > pagination.total_pages) return null;
+                      
+                      return (
+                        <button
+                          key={pageNum}
+                          className={pageNum === currentPage ? styles.active : ''}
+                          onClick={() => handlePageChange(pageNum)}
+                          disabled={loading}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    }).filter(Boolean)}
+                    
+                    {pagination.total_pages > 10 && currentPage < pagination.total_pages - 5 && (
+                      <>
+                        <span>...</span>
+                        <button onClick={() => handlePageChange(pagination.total_pages)}>
+                          {pagination.total_pages}
+                        </button>
+                      </>
+                    )}
+                    
+                    <button 
+                      onClick={() => handlePageChange(currentPage + 1)} 
+                      disabled={currentPage >= pagination.total_pages || loading}
+                    >
                       Вперёд →
                     </button>
                   </div>
                 )}
+                
+                <div className={styles.paginationInfo}>
+                  Показано {products.length} из {pagination.total} товаров (страница {currentPage} из {pagination.total_pages || 1})
+                </div>
               </>
             )}
           </div>

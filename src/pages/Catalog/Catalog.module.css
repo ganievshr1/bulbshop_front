@@ -7,9 +7,9 @@
   max-width: 1440px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: 320px 1fr;
-  gap: 24px;
-  padding: 24px;
+  grid-template-columns: 280px 1fr;
+  gap: 32px;
+  padding: 24px 32px;
   align-items: start;
 }
 
@@ -22,7 +22,6 @@
   position: sticky;
   top: 80px;
   width: 100%;
-  max-width: 320px;
   overflow: visible;
   box-sizing: border-box;
 }
@@ -32,6 +31,8 @@
   font-weight: bold;
   margin-bottom: 24px;
   color: var(--lm-dark);
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--lm-yellow);
 }
 
 .filterSection {
@@ -43,6 +44,8 @@
 
 .filterSection:last-of-type {
   border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
 }
 
 .filterSection h4 {
@@ -76,10 +79,6 @@
 
 .checkboxLabel span:first-of-type {
   flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
   font-size: 13px;
 }
 
@@ -160,7 +159,7 @@
   font-size: 16px;
   font-weight: bold;
   cursor: pointer;
-  margin-top: 8px;
+  margin-top: 16px;
   transition: var(--lm-transition);
   box-sizing: border-box;
 }
@@ -169,48 +168,27 @@
   background: var(--lm-yellow-hover);
 }
 
-/* ===== БАННЕР ПОИСКА ===== */
-.searchBanner {
-  margin-bottom: 12px;
-  font-size: 14px;
-  color: #666;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.searchBanner button {
-  padding: 2px 8px;
-  font-size: 12px;
-  cursor: pointer;
-  background: #f0f0f0;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  color: #666;
-}
-
-.searchBanner button:hover {
-  background: #e0e0e0;
-}
-
 /* ===== ОСНОВНАЯ ОБЛАСТЬ ===== */
 .mainArea {
   min-height: 400px;
+  width: 100%;
 }
 
 .sortRow {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
   font-size: 14px;
   color: var(--lm-gray);
+  background: var(--lm-white);
+  padding: 12px 16px;
+  border-radius: var(--lm-radius);
+  box-shadow: var(--lm-shadow);
 }
 
 .sortRow span {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-weight: 500;
 }
 
 .sortSelect {
@@ -222,14 +200,44 @@
   background: var(--lm-white);
   outline: none;
   cursor: pointer;
-  flex-shrink: 0;
-  margin-left: 12px;
 }
 
+/* ===== СЕТКА ТОВАРОВ ===== */
 .productGrid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+/* ===== БАННЕР ПОИСКА ===== */
+.searchBanner {
+  margin-bottom: 16px;
+  padding: 10px 16px;
+  background: var(--lm-white);
+  border-radius: var(--lm-radius);
+  font-size: 14px;
+  color: var(--lm-gray);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  box-shadow: var(--lm-shadow);
+}
+
+.searchBanner button {
+  padding: 4px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  background: var(--lm-bg);
+  border: 1px solid var(--lm-border);
+  border-radius: 4px;
+  color: var(--lm-gray);
+  transition: var(--lm-transition);
+}
+
+.searchBanner button:hover {
+  background: var(--lm-border);
 }
 
 .noResults {
@@ -243,6 +251,7 @@
 .noResults p {
   margin-bottom: 16px;
   color: var(--lm-gray);
+  font-size: 16px;
 }
 
 .resetBtn {
@@ -258,6 +267,7 @@
 
 .resetBtn:hover {
   background: var(--lm-bg);
+  border-color: var(--lm-yellow);
 }
 
 /* ===== ПАГИНАЦИЯ ===== */
@@ -265,7 +275,7 @@
   display: flex;
   justify-content: center;
   gap: 8px;
-  margin-top: 24px;
+  margin-top: 16px;
 }
 
 .pagination button {
@@ -365,48 +375,127 @@
 }
 
 /* ===== АДАПТИВ ===== */
-@media (max-width: 1200px) {
+/* Десктоп (больше 1400px) */
+@media (min-width: 1400px) {
+  .contentWrapper {
+    grid-template-columns: 300px 1fr;
+    gap: 40px;
+    padding: 32px 40px;
+  }
+  
+  .productGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Планшет (1024px - 1200px) */
+@media (max-width: 1200px) and (min-width: 1025px) {
   .productGrid {
     grid-template-columns: repeat(2, 1fr);
   }
 }
 
+/* Планшет (768px - 1024px) */
 @media (max-width: 1024px) {
   .contentWrapper {
-    grid-template-columns: 280px 1fr;
-    gap: 16px;
-    padding: 16px;
+    grid-template-columns: 260px 1fr;
+    gap: 24px;
+    padding: 20px;
   }
   
   .sidebar {
-    max-width: 280px;
     padding: 20px;
+  }
+  
+  .productGrid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+  
+  .sortRow {
+    padding: 10px 14px;
   }
 }
 
+/* Мобильные (до 768px) */
 @media (max-width: 768px) {
   .contentWrapper {
     grid-template-columns: 1fr;
+    gap: 20px;
+    padding: 16px;
   }
 
   .sidebar {
     position: static;
-    margin-bottom: 16px;
-    max-width: 100%;
+    margin-bottom: 0;
+  }
+  
+  .sidebar {
+    padding: 20px;
   }
 
   .productGrid {
     grid-template-columns: 1fr;
+    gap: 16px;
   }
   
   .sortRow {
     flex-direction: column;
     gap: 12px;
-    align-items: flex-start;
+    align-items: stretch;
   }
   
   .sortSelect {
-    margin-left: 0;
     width: 100%;
   }
+  
+  .pagination {
+    flex-wrap: wrap;
+  }
+  
+  .pagination button {
+    min-width: 36px;
+    height: 36px;
+    font-size: 13px;
+  }
 }
+
+/* Маленькие мобильные (до 480px) */
+@media (max-width: 480px) {
+  .contentWrapper {
+    padding: 12px;
+  }
+  
+  .sidebar {
+    padding: 16px;
+  }
+  
+  .filterTitle {
+    font-size: 16px;
+    margin-bottom: 16px;
+  }
+  
+  .filterSection h4 {
+    font-size: 14px;
+  }
+  
+  .checkboxLabel span:first-of-type {
+    font-size: 12px;
+  }
+  
+  .showBtn {
+    padding: 12px;
+    font-size: 14px;
+  }
+  
+  .productGrid {
+    gap: 12px;
+  }
+  
+  .pagination button {
+    min-width: 32px;
+    height: 32px;
+    font-size: 12px;
+  }
+}
+

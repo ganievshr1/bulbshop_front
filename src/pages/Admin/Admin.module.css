@@ -147,6 +147,29 @@
   color: #c0392b;
 }
 
+/* ===== КНОПКИ В ХЕДЕРЕ ===== */
+.headerButtons {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.changePasswordBtn {
+  padding: 8px 16px;
+  background: transparent;
+  border: 1px solid var(--lm-yellow);
+  border-radius: 8px;
+  color: var(--lm-yellow);
+  font-size: 14px;
+  cursor: pointer;
+  transition: var(--lm-transition);
+}
+
+.changePasswordBtn:hover {
+  background: rgba(255, 214, 0, 0.1);
+  transform: translateY(-1px);
+}
+
 /* ===== КОНТЕНТ ===== */
 .adminContent {
   max-width: 1440px;
@@ -404,11 +427,23 @@
   text-align: left;
 }
 
+/* Выравнивание последней колонки (Действия) по правому краю */
+.table th:last-child {
+  text-align: right;
+}
+
 .table td {
   padding: 14px 16px;
   font-size: 14px;
   color: var(--lm-dark);
   border-bottom: 1px solid var(--lm-border);
+  vertical-align: middle;
+}
+
+/* Выравнивание ячеек последней колонки по правому краю */
+.table td:last-child {
+  text-align: right;
+  white-space: nowrap;
 }
 
 .table tbody tr:hover {
@@ -466,6 +501,7 @@
   font-weight: 500;
 }
 
+/* Кнопки действий - выровнены по правому краю */
 .editBtn {
   background: var(--lm-yellow);
   color: var(--lm-dark);
@@ -477,11 +513,18 @@
   cursor: pointer;
   margin-right: 8px;
   transition: var(--lm-transition);
+  display: inline-block;
 }
 
-.editBtn:hover {
+.editBtn:hover:not(:disabled) {
   background: var(--lm-yellow-hover);
   transform: scale(1.02);
+}
+
+.editBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .deleteBtn {
@@ -494,11 +537,18 @@
   font-weight: 500;
   cursor: pointer;
   transition: var(--lm-transition);
+  display: inline-block;
 }
 
-.deleteBtn:hover {
+.deleteBtn:hover:not(:disabled) {
   background: #c0392b;
   transform: scale(1.02);
+}
+
+.deleteBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .statusSelect {
@@ -582,141 +632,20 @@
   transform: none;
 }
 
-/* ===== АДАПТИВ ===== */
-@media (max-width: 1024px) {
-  .formGrid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  
-  .adminContent {
-    padding: 30px;
-  }
+.paginationInfo {
+  text-align: center;
+  padding: 16px 20px;
+  font-size: 13px;
+  color: var(--lm-gray);
+  background: var(--lm-bg);
+  border-top: 1px solid var(--lm-border);
 }
 
-@media (max-width: 768px) {
-  .adminContent {
-    padding: 20px;
-  }
-
-  .toolbar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .tabs {
-    justify-content: center;
-  }
-  
-  .tab {
-    flex: 1;
-    text-align: center;
-  }
-
-  .formGrid {
-    grid-template-columns: 1fr;
-  }
-  
-  .table th,
-  .table td {
-    padding: 10px 12px;
-    font-size: 12px;
-  }
-  
-  .editBtn,
-  .deleteBtn {
-    padding: 4px 10px;
-    font-size: 11px;
-  }
-  
-  .pagination button {
-    min-width: 34px;
-    height: 34px;
-    font-size: 12px;
-  }
-  
-  .loginCard {
-    padding: 32px 24px;
-    margin: 16px;
-  }
-  
-  .loginTitle {
-    font-size: 24px;
-  }
-  
-  .adminHeader {
-    padding: 0 20px;
-    height: 56px;
-  }
-  
-  .adminHeader > div {
-    flex-direction: column;
-    gap: 4px;
-  }
-  
-  .adminLogo {
-    font-size: 16px;
-  }
-  
-  .adminName {
-    font-size: 10px;
-  }
-}
-
-@media (max-width: 480px) {
-  .adminContent {
-    padding: 16px;
-  }
-  
-  .table th,
-  .table td {
-    padding: 8px;
-    font-size: 11px;
-  }
-  
-  .editBtn,
-  .deleteBtn {
-    padding: 3px 8px;
-    font-size: 10px;
-    margin-right: 4px;
-  }
-  
-  .statusSelect {
-    padding: 4px 6px;
-    font-size: 11px;
-  }
-  
-  .pagination {
-    gap: 4px;
-  }
-  
-  .pagination button {
-    min-width: 30px;
-    height: 30px;
-    font-size: 11px;
-  }
-}
-
-/* ===== КНОПКИ В ХЕДЕРЕ ===== */
-.headerButtons {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.changePasswordBtn {
-  padding: 8px 16px;
-  background: transparent;
-  border: 1px solid var(--lm-yellow);
-  border-radius: 8px;
-  color: var(--lm-yellow);
-  font-size: 14px;
-  cursor: pointer;
-  transition: var(--lm-transition);
-}
-
-.changePasswordBtn:hover {
-  background: rgba(255, 214, 0, 0.1);
-  transform: translateY(-1px);
+/* ===== АНИМАЦИЯ УДАЛЕНИЯ ===== */
+.deletingRow {
+  opacity: 0.5;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
 }
 
 /* ===== МОДАЛЬНОЕ ОКНО ===== */
@@ -878,6 +807,120 @@
 .modalButtons .submitBtn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* ===== АДАПТИВ ===== */
+@media (max-width: 1024px) {
+  .formGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .adminContent {
+    padding: 30px;
+  }
+}
+
+@media (max-width: 768px) {
+  .adminContent {
+    padding: 20px;
+  }
+
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .tabs {
+    justify-content: center;
+  }
+  
+  .tab {
+    flex: 1;
+    text-align: center;
+  }
+
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+  
+  .table th,
+  .table td {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+  
+  .editBtn,
+  .deleteBtn {
+    padding: 4px 10px;
+    font-size: 11px;
+  }
+  
+  .pagination button {
+    min-width: 34px;
+    height: 34px;
+    font-size: 12px;
+  }
+  
+  .loginCard {
+    padding: 32px 24px;
+    margin: 16px;
+  }
+  
+  .loginTitle {
+    font-size: 24px;
+  }
+  
+  .adminHeader {
+    padding: 0 20px;
+    height: 56px;
+  }
+  
+  .adminHeader > div {
+    flex-direction: column;
+    gap: 4px;
+  }
+  
+  .adminLogo {
+    font-size: 16px;
+  }
+  
+  .adminName {
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .adminContent {
+    padding: 16px;
+  }
+  
+  .table th,
+  .table td {
+    padding: 8px;
+    font-size: 11px;
+  }
+  
+  .editBtn,
+  .deleteBtn {
+    padding: 3px 8px;
+    font-size: 10px;
+    margin-right: 4px;
+  }
+  
+  .statusSelect {
+    padding: 4px 6px;
+    font-size: 11px;
+  }
+  
+  .pagination {
+    gap: 4px;
+  }
+  
+  .pagination button {
+    min-width: 30px;
+    height: 30px;
+    font-size: 11px;
+  }
 }
 
 /* Адаптив для модалки */

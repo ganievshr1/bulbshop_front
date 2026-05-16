@@ -1,6 +1,58 @@
 ﻿const API_URL = import.meta.env.VITE_API_URL || 'http://localhost/api/v1';
 const ADMIN_API_URL = import.meta.env.VITE_ADMIN_API_URL || 'http://localhost/api/v1';
 
+// ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
+
+// Функция для повторных попыток запроса
+const fetchWithRetry = async (url, options, maxRetries = 2, delay = 1000) => {
+  let lastError;
+  
+  for (let i = 0; i <= maxRetries; i++) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 секунд таймаут
+      
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
+      return response;
+    } catch (error) {
+      lastError = error;
+      console.log(`Попытка ${i + 1}/${maxRetries + 1} не удалась:`, error.message);
+      
+      if (i < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, delay * (i + 1)));
+      }
+    }
+  }
+  
+  throw lastError;
+};
+
+// Проверка, существует ли товар
+const checkProductExists = async (id) => {
+  const token = getAdminToken();
+  if (!token) return null;
+  
+  try {
+    const response = await fetch(`${ADMIN_API_URL}/admin/products/${id}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+    
+    if (response.status === 404) return false;
+    if (response.ok) return true;
+    return null;
+  } catch (error) {
+    console.error('Check product exists error:', error);
+    return null;
+  }
+};
+
 // ==================== АУТЕНТИФИКАЦИЯ ====================
 
 // Хранение токена
@@ -22,11 +74,12 @@ export const getAdminToken = () => {
 // Админ логин
 export const adminLogin = async (login, password) => {
   try {
-    const response = await fetch(`${ADMIN_API_URL}/admin/login`, {
+    const response = await fetchWithRetry(`${ADMIN_API_URL}/admin/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ login, password }),
     });
+    
     const data = await response.json();
     
     if (data.success && data.token) {
@@ -46,7 +99,7 @@ export const adminLogout = async () => {
   const token = getAdminToken();
   if (token) {
     try {
-      await fetch(`${ADMIN_API_URL}/admin/logout`, {
+      await fetchWithRetry(`${ADMIN_API_URL}/admin/logout`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -68,7 +121,7 @@ export const getCurrentAdmin = async () => {
   if (!token) return { success: false, data: null };
   
   try {
-    const response = await fetch(`${ADMIN_API_URL}/admin/me`, {
+    const response = await fetchWithRetry(`${ADMIN_API_URL}/admin/me`, {
       headers: {
         'Authorization': `Bearer ${token}`,
       },
@@ -94,7 +147,7 @@ export const changeAdminPassword = async (currentPassword, newPassword) => {
   if (!token) return { success: false, error: 'Не авторизован' };
   
   try {
-    const response = await fetch(`${ADMIN_API_URL}/admin/change-password`, {
+    const response = await fetchWithRetry(`${ADMIN_API_URL}/admin/change-password`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -128,7 +181,7 @@ export const getProducts = async (filters = {}) => {
     if (filters.min_price) url += `&min_price=${filters.min_price}`;
     if (filters.max_price) url += `&max_price=${filters.max_price}`;
 
-    const response = await fetch(url);
+    const response = await fetchWithRetry(url);
     if (!response.ok) throw new Error('Ошибка загрузки товаров');
     const data = await response.json();
     return { success: true, data: data.data || [] };
@@ -140,7 +193,7 @@ export const getProducts = async (filters = {}) => {
 
 export const getProductById = async (id) => {
   try {
-    const response = await fetch(`${API_URL}/products/${id}`);
+    const response = await fetchWithRetry(`${API_URL}/products/${id}`);
     if (!response.ok) throw new Error('Товар не найден');
     const data = await response.json();
     return { success: true, data: data };
@@ -154,7 +207,7 @@ export const getProductById = async (id) => {
 
 export const getCategories = async () => {
   try {
-    const response = await fetch(`${API_URL}/categories`);
+    const response = await fetchWithRetry(`${API_URL}/categories`);
     if (!response.ok) throw new Error('Ошибка загрузки категорий');
     const data = await response.json();
     return { success: true, data: Array.isArray(data) ? data : (data.data || []) };
@@ -166,7 +219,7 @@ export const getCategories = async () => {
 
 export const getCategoryById = async (id) => {
   try {
-    const response = await fetch(`${API_URL}/categories/${id}`);
+    const response = await fetchWithRetry(`${API_URL}/categories/${id}`);
     if (!response.ok) throw new Error('Категория не найдена');
     const data = await response.json();
     return { success: true, data };
@@ -178,30 +231,43 @@ export const getCategoryById = async (id) => {
 
 // ==================== АДМИН: ТОВАРЫ (через Admin Service) ====================
 
-// Получить все товары (включая неактивные) - админская версия
+// Получить все товары (включая неактивные) - админская версия с серверной пагинацией
 export const getAdminProducts = async (filters = {}) => {
   const token = getAdminToken();
-  if (!token) return { success: false, error: 'Не авторизован', data: [] };
+  if (!token) return { success: false, error: 'Не авторизован', data: [], pagination: null };
   
   try {
-    let url = `${ADMIN_API_URL}/admin/products?page=${filters.page || 1}&limit=${filters.limit || 100}`;
+    const page = filters.page || 1;
+    const limit = filters.limit || 10;
+    
+    let url = `${ADMIN_API_URL}/admin/products?page=${page}&limit=${limit}`;
     if (filters.category_id) url += `&category_id=${filters.category_id}`;
     if (filters.min_price) url += `&min_price=${filters.min_price}`;
     if (filters.max_price) url += `&max_price=${filters.max_price}`;
     if (filters.socket_type) url += `&socket_type=${filters.socket_type}`;
     if (filters.is_active !== undefined) url += `&is_active=${filters.is_active}`;
 
-    const response = await fetch(url, {
+    const response = await fetchWithRetry(url, {
       headers: {
         'Authorization': `Bearer ${token}`,
       },
     });
-    if (!response.ok) throw new Error('Ошибка загрузки товаров');
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || 'Ошибка загрузки товаров');
+    }
+    
     const data = await response.json();
-    return { success: true, data: data.data || [], pagination: data.pagination };
+    
+    return { 
+      success: true, 
+      data: data.data || [], 
+      pagination: data.pagination || { page, limit, total: 0, total_pages: 0 }
+    };
   } catch (error) {
     console.error('API Error (getAdminProducts):', error);
-    return { success: false, error: error.message, data: [] };
+    return { success: false, error: error.message, data: [], pagination: null };
   }
 };
 
@@ -211,7 +277,7 @@ export const createProduct = async (productData) => {
   if (!token) return { success: false, error: 'Не авторизован', data: null };
   
   try {
-    const response = await fetch(`${ADMIN_API_URL}/admin/products`, {
+    const response = await fetchWithRetry(`${ADMIN_API_URL}/admin/products`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -219,8 +285,13 @@ export const createProduct = async (productData) => {
       },
       body: JSON.stringify(productData),
     });
-    if (!response.ok) throw new Error('Ошибка создания товара');
+    
     const data = await response.json();
+    
+    if (!response.ok) {
+      return { success: false, error: data.detail || 'Ошибка создания товара', data: null };
+    }
+    
     return { success: true, data };
   } catch (error) {
     console.error('API Error (createProduct):', error);
@@ -234,7 +305,7 @@ export const updateProduct = async (id, productData) => {
   if (!token) return { success: false, error: 'Не авторизован', data: null };
   
   try {
-    const response = await fetch(`${ADMIN_API_URL}/admin/products/${id}`, {
+    const response = await fetchWithRetry(`${ADMIN_API_URL}/admin/products/${id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -242,8 +313,13 @@ export const updateProduct = async (id, productData) => {
       },
       body: JSON.stringify(productData),
     });
-    if (!response.ok) throw new Error('Ошибка обновления товара');
+    
     const data = await response.json();
+    
+    if (!response.ok) {
+      return { success: false, error: data.detail || 'Ошибка обновления товара', data: null };
+    }
+    
     return { success: true, data };
   } catch (error) {
     console.error('API Error (updateProduct):', error);
@@ -251,22 +327,58 @@ export const updateProduct = async (id, productData) => {
   }
 };
 
-// Удалить товар (админ)
+// Удалить товар (админ) - УЛУЧШЕННАЯ ВЕРСИЯ
 export const deleteProduct = async (id) => {
   const token = getAdminToken();
   if (!token) return { success: false, error: 'Не авторизован' };
   
   try {
-    const response = await fetch(`${ADMIN_API_URL}/admin/products/${id}`, {
+    const response = await fetchWithRetry(`${ADMIN_API_URL}/admin/products/${id}`, {
       method: 'DELETE',
       headers: {
         'Authorization': `Bearer ${token}`,
       },
     });
-    if (!response.ok) throw new Error('Ошибка удаления товара');
-    return { success: true };
+    
+    // 204 No Content - успешное удаление
+    if (response.status === 204) {
+      return { success: true };
+    }
+    
+    // 200 OK с телом ответа
+    if (response.ok) {
+      try {
+        const data = await response.json();
+        return { success: true, data };
+      } catch {
+        return { success: true };
+      }
+    }
+    
+    // Если ответ не успешный, пробуем получить ошибку
+    const errorData = await response.json().catch(() => ({}));
+    return { success: false, error: errorData.detail || 'Ошибка удаления товара' };
+    
   } catch (error) {
     console.error('API Error (deleteProduct):', error);
+    
+    // При сетевой ошибке проверяем, удалился ли товар
+    console.log(`Сетевая ошибка при удалении товара ${id}, проверяем состояние...`);
+    
+    const exists = await checkProductExists(id);
+    
+    // Если товар не найден (существовал, но теперь нет) - удаление успешно
+    if (exists === false) {
+      console.log(`Товар ${id} успешно удалён, несмотря на сетевую ошибку`);
+      return { success: true };
+    }
+    
+    // Если не удалось проверить состояние или товар всё ещё существует
+    if (exists === true) {
+      return { success: false, error: 'Сетевая ошибка, но товар не удалён. Попробуйте снова.' };
+    }
+    
+    // Если не удалось проверить состояние
     return { success: false, error: error.message };
   }
 };
@@ -277,7 +389,7 @@ export const updateProductStock = async (id, stock) => {
   if (!token) return { success: false, error: 'Не авторизован', data: null };
   
   try {
-    const response = await fetch(`${ADMIN_API_URL}/admin/products/${id}/stock`, {
+    const response = await fetchWithRetry(`${ADMIN_API_URL}/admin/products/${id}/stock`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -301,7 +413,7 @@ export const createCategory = async (categoryData) => {
   if (!token) return { success: false, error: 'Не авторизован', data: null };
   
   try {
-    const response = await fetch(`${API_URL}/categories`, {
+    const response = await fetchWithRetry(`${API_URL}/categories`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -323,7 +435,7 @@ export const updateCategory = async (id, categoryData) => {
   if (!token) return { success: false, error: 'Не авторизован', data: null };
   
   try {
-    const response = await fetch(`${API_URL}/categories/${id}`, {
+    const response = await fetchWithRetry(`${API_URL}/categories/${id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -350,7 +462,7 @@ export const getAdminOrders = async (filters = {}) => {
     let url = `${ADMIN_API_URL}/admin/orders?page=${filters.page || 1}&limit=${filters.limit || 100}`;
     if (filters.status) url += `&status=${filters.status}`;
 
-    const response = await fetch(url, {
+    const response = await fetchWithRetry(url, {
       headers: {
         'Authorization': `Bearer ${token}`,
       },
@@ -369,7 +481,7 @@ export const getAdminOrderById = async (id) => {
   if (!token) return { success: false, error: 'Не авторизован', data: null };
   
   try {
-    const response = await fetch(`${ADMIN_API_URL}/admin/orders/${id}`, {
+    const response = await fetchWithRetry(`${ADMIN_API_URL}/admin/orders/${id}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
       },
@@ -388,7 +500,7 @@ export const updateOrderStatus = async (id, status) => {
   if (!token) return { success: false, error: 'Не авторизован', data: null };
   
   try {
-    const response = await fetch(`${ADMIN_API_URL}/admin/orders/${id}/status`, {
+    const response = await fetchWithRetry(`${ADMIN_API_URL}/admin/orders/${id}/status`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -409,7 +521,7 @@ export const updateOrderStatus = async (id, status) => {
 
 export const createOrder = async (orderData) => {
   try {
-    const response = await fetch(`${API_URL}/orders`, {
+    const response = await fetchWithRetry(`${API_URL}/orders`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(orderData),
@@ -425,7 +537,7 @@ export const createOrder = async (orderData) => {
 
 export const getOrders = async () => {
   try {
-    const response = await fetch(`${API_URL}/orders`);
+    const response = await fetchWithRetry(`${API_URL}/orders`);
     if (!response.ok) throw new Error('Ошибка загрузки заказов');
     const data = await response.json();
     return { success: true, data: data.data || data || [] };
@@ -448,7 +560,7 @@ export const getAuditLogs = async (filters = {}) => {
     if (filters.entity_type) url += `&entity_type=${filters.entity_type}`;
     if (filters.entity_id) url += `&entity_id=${filters.entity_id}`;
 
-    const response = await fetch(url, {
+    const response = await fetchWithRetry(url, {
       headers: {
         'Authorization': `Bearer ${token}`,
       },
@@ -467,7 +579,7 @@ export const getEntityHistory = async (entityType, entityId) => {
   if (!token) return { success: false, error: 'Не авторизован', data: [] };
   
   try {
-    const response = await fetch(`${ADMIN_API_URL}/admin/logs/entity/${entityType}/${entityId}`, {
+    const response = await fetchWithRetry(`${ADMIN_API_URL}/admin/logs/entity/${entityType}/${entityId}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
       },
