@@ -537,19 +537,46 @@ export const updateOrderStatus = async (id, status) => {
 
 export const createOrder = async (orderData) => {
   try {
+    console.log('📦 Sending order:', orderData);
+    
     const response = await fetchWithRetry(`${API_URL}/orders`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(orderData),
     });
-    if (!response.ok) throw new Error('Ошибка создания заказа');
-    const data = await response.json();
-    return { success: true, data };
+    
+    console.log('📡 Response status:', response.status);
+    
+    let data;
+    const responseText = await response.text();
+    
+    try {
+      data = JSON.parse(responseText);
+    } catch (e) {
+      console.error('Failed to parse JSON:', responseText);
+      throw new Error('Некорректный ответ сервера');
+    }
+    
+    if (!response.ok) {
+      const errorMsg = data.detail || data.message || 'Ошибка создания заказа';
+      throw new Error(errorMsg);
+    }
+    
+    if (data.success && data.data) {
+      return { success: true, data: data.data };
+    } else if (data.id || data.order_number) {
+      return { success: true, data: data };
+    }
+    
+    return { success: true, data: data };
+    
   } catch (error) {
     console.error('API Error (createOrder):', error);
     return { success: false, error: error.message, data: null };
   }
 };
+
+// ==================== ПУБЛИЧНЫЕ ЗАКАЗЫ (получение) ====================
 
 export const getOrders = async () => {
   try {

@@ -25,49 +25,55 @@ const Checkout = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+const handleSubmit = async (e) => {
+  e.preventDefault();
 
-    if (!formData.customer_name || !formData.customer_phone || !formData.delivery_address) {
-      alert('Пожалуйста, заполните обязательные поля');
-      return;
-    }
+  if (!formData.customer_name || !formData.customer_phone || !formData.delivery_address) {
+    alert('Пожалуйста, заполните обязательные поля');
+    return;
+  }
 
-    if (cart.length === 0) {
-      alert('Корзина пуста');
-      return;
-    }
+  if (cart.length === 0) {
+    alert('Корзина пуста');
+    return;
+  }
 
-    setLoading(true);
+  setLoading(true);
 
-    const orderData = {
-      customer_name: formData.customer_name,
-      customer_phone: formData.customer_phone,
-      customer_email: formData.customer_email || null,
-      delivery_address: formData.delivery_address,
-      comment: formData.comment || null,
-      payment_method: paymentMethod,
-      items: cart.map((item) => ({
-        product_id: Number(item.id),
-        product_name: item.name,
-        quantity: Number(item.quantity),
-        price: Number(item.price) || 0,
-        total_price: (Number(item.price) || 0) * Number(item.quantity),
-      })),
-      total_price: Number(totalPrice) || 0,
-    };
-
-    const result = await dispatch(placeOrder(orderData));
-
-    if (result.payload && result.payload.success) {
-      dispatch(clearCart());
-      navigate('/order-conformation', { state: { order: result.payload.data } });
-    } else {
-      alert('Ошибка при оформлении заказа: ' + (result.payload?.error || 'Неизвестная ошибка'));
-    }
-
-    setLoading(false);
+  // ПРАВИЛЬНЫЙ ФОРМАТ - только то, что ожидает бэкенд
+  const orderData = {
+    customer_name: formData.customer_name,
+    customer_phone: formData.customer_phone,
+    customer_email: formData.customer_email || null,
+    delivery_address: formData.delivery_address,
+    payment_method: paymentMethod,
+    comment: formData.comment || null,
+    items: cart.map((item) => ({
+      product_id: Number(item.id),
+      quantity: Number(item.quantity)
+    }))
   };
+
+  console.log('Sending order:', orderData); // Отладка
+
+  try {
+    const result = await dispatch(placeOrder(orderData)).unwrap();
+    
+    console.log('Order result:', result); // Отладка
+    
+    if (result && result.success) {
+      dispatch(clearCart());
+      navigate('/order-conformation', { state: { order: result.data } });
+    } else {
+      alert('Ошибка при оформлении заказа: ' + (result?.error || 'Неизвестная ошибка'));
+    }
+  } catch (error) {
+    console.error('Order error:', error);
+    alert('Ошибка при оформлении заказа: ' + (error.message || error || 'Неизвестная ошибка'));
+  } finally {
+    setLoading(false);
+  }
+};
 
   const formatPrice = (price) => {
     const num = Number(price);

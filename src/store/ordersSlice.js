@@ -3,9 +3,16 @@ import { createOrder, getOrders, updateOrderStatus } from '../services/api';
 
 export const placeOrder = createAsyncThunk(
   'orders/placeOrder',
-  async (orderData) => {
-    const result = await createOrder(orderData);
-    return result;
+  async (orderData, { rejectWithValue }) => {
+    try {
+      const result = await createOrder(orderData);
+      if (!result.success) {
+        return rejectWithValue(result.error);
+      }
+      return result;
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
   }
 );
 
